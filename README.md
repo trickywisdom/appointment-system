@@ -22,13 +22,15 @@ This is a simple desktop application for managing appointments using Python and 
 ## 🗂 Project Structure
 
 ```
-doctor-appointment-system/
+appointment-system/
 │
 ├── main.py          # Entry point of the application
 ├── gui.py           # Graphical interface (Tkinter)
 ├── models.py        # Patient & Appointment classes
 ├── database.py      # Database connection logic
-├── clinic.db        # SQLite DB (auto-created)
+├── export_excel.py  # Export appointments to Excel
+├── emails_utils.py  # Notify customers through email
+├── barber.db        # SQLite DB (auto-created)
 ├── README.md        # Project overview
 ├── .gitignore       # Git ignored files
 └── docs/            # Documentation, diagrams, PDF files
@@ -39,7 +41,7 @@ doctor-appointment-system/
 1. Clone the repository:
 ```bash
 git clone https://github.com/PLHPRO/appointment-system.git
-cd doctor-appointment-system
+cd appointment-system
 ```
 
 2. Install dependencies:
