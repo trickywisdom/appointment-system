@@ -10,20 +10,20 @@ def setup_database():
     
     # Δημιουργία του πίνακα για πελάτες αν δεν υπάρχει ήδη
     c.execute('''CREATE TABLE IF NOT EXISTS customers (
-                    id INTEGER PRIMARY KEY,  # Πρωτεύων κλειδί για μοναδική ταυτοποίηση
-                    first_name TEXT NOT NULL,  # Όνομα πελάτη
-                    last_name TEXT NOT NULL,   # Επίθετο πελάτη
-                    phone TEXT NOT NULL UNIQUE, # Τηλέφωνο, μοναδικό για κάθε πελάτη
-                    email TEXT NOT NULL UNIQUE  # Email, μοναδικό για κάθε πελάτη
+                    id INTEGER PRIMARY KEY,  -- Πρωτεύων κλειδί για μοναδική ταυτοποίηση
+                    first_name TEXT NOT NULL,  -- Όνομα πελάτη
+                    last_name TEXT NOT NULL,   -- Επίθετο πελάτη
+                    phone TEXT NOT NULL UNIQUE, -- Τηλέφωνο, μοναδικό για κάθε πελάτη
+                    email TEXT NOT NULL UNIQUE  -- Email, μοναδικό για κάθε πελάτη
                  )''')
 
     # Δημιουργία του πίνακα για ραντεβού αν δεν υπάρχει ήδη
     c.execute('''CREATE TABLE IF NOT EXISTS appointments (
-                    id INTEGER PRIMARY KEY,  # Πρωτεύων κλειδί για μοναδική ταυτοποίηση
-                    customer_id INTEGER,     # Αναφορά στο ID του πελάτη
-                    date_time TEXT,          # Ημερομηνία και ώρα του ραντεβού
-                    duration INTEGER,        # Διάρκεια ραντεβού σε λεπτά
-                    FOREIGN KEY (customer_id) REFERENCES customers (id)  # Σχέση με τον πίνακα πελατών
+                    id INTEGER PRIMARY KEY,  -- Πρωτεύων κλειδί για μοναδική ταυτοποίηση
+                    customer_id INTEGER,     -- Αναφορά στο ID του πελάτη
+                    date_time TEXT,          -- Ημερομηνία και ώρα του ραντεβού
+                    duration INTEGER,        -- Διάρκεια ραντεβού σε λεπτά
+                    FOREIGN KEY (customer_id) REFERENCES customers (id)  -- Σχέση με τον πίνακα πελατών
                  )''')
     conn.commit()
     conn.close()
@@ -37,12 +37,20 @@ class Customer:
 
     def save_to_db(self):
         # Αποθηκεύει τον πελάτη στη βάση δεδομένων
-        conn = sqlite3.connect('salon_appointments.db')
-        c = conn.cursor()
-        c.execute('INSERT INTO customers (first_name, last_name, phone, email) VALUES (?, ?, ?, ?)',
-                  (self.first_name, self.last_name, self.phone, self.email))
-        conn.commit()
-        conn.close()
+        try:
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute('''
+                INSERT INTO customers (first_name, last_name, phone, email)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(phone) DO UPDATE SET
+                    first_name=excluded.first_name,
+                    last_name=excluded.last_name,
+                    email=excluded.email
+            ''', (self.first_name, self.last_name, self.phone, self.email))
+        except sqlite3.Error as e:
+            raise e
+
 
     @staticmethod
     def delete_from_db(phone):
@@ -52,6 +60,21 @@ class Customer:
         c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def get_all():
+        """
+        Retrieve all patients with their full names.
+        """
+        try:
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute("SELECT first_name, last_name, phone, email FROM customers")
+                patients = [Customer(first_name=row[0], last_name=row[1], phone=row[2], email=row[3]) for row in c.fetchall()]
+                return patients
+        except sqlite3.Error as e:
+            print(f"Error fetching patients: {e}")
+            return []
 
 class Appointment:
     def __init__(self, customer_id, date_time, duration=20):
@@ -91,5 +114,27 @@ class Appointment:
     @staticmethod
     def delete_from_db(appointment_id):
         # Διαγράφει ραντεβού από τη βάση δεδομένων βάσει του ID
-        conn = sqlite
+        conn = sqlite3.connect('salon_appointments.db')
+
+## Σημειώσεις
+
+# Το σφάλμα database is locked στη SQLite σημαίνει ότι κάποια σύνδεση (ή cursor) δεν έχει κλείσει σωστά ή έχει μείνει ανοιχτή λόγω προηγούμενου σφάλματος. Αν δεν την απελευθερώσεις (ή κάνεις rollback), η βάση παραμένει κλειδωμένη και δεν επιτρέπει νέες εγγραφές.
+
+# 1. Πάντα να χρησιμοποιείς with για τις συνδέσεις στη SQLite
+
+# def save_to_db(self):
+#     try:
+#         with sqlite3.connect("mydb.db") as conn:
+#             cursor = conn.cursor()
+#             cursor.execute(
+#                 "INSERT INTO customers (first_name, last_name, phone, email) VALUES (?, ?, ?, ?)",
+#                 (self.first_name, self.last_name, self.phone, self.email)
+#             )
+#     except sqlite3.Error as e:
+#         raise e
+
+# ✅ Άρα χρειάζομαι conn.commit();
+
+# Μέσα σε with → ✨ Όχι, δεν χρειάζεται. Το κάνει μόνο του στο τέλος.
+# Χωρίς with → ✅ Ναι, είναι υποχρεωτικό. Χωρίς αυτό, τίποτα δεν αποθηκεύεται
 
