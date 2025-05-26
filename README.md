@@ -46,7 +46,7 @@ cd appointment-system
 
 2. Install dependencies:
 ```bash
-pip install tkcalendar xlsxwriter pillow
+pip install tkcalendar xlsxwriter smtplib pillow sv-ttk
 ```
 
 3. Run the app:
