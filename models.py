@@ -19,10 +19,10 @@ def setup_database():
 
     # Δημιουργία του πίνακα για ραντεβού αν δεν υπάρχει ήδη
     c.execute('''CREATE TABLE IF NOT EXISTS appointments (
-                    id INTEGER PRIMARY KEY,  -- Πρωτεύων κλειδί για μοναδική ταυτοποίηση
-                    customer_id INTEGER,     -- Αναφορά στο ID του πελάτη
-                    date_time TEXT,          -- Ημερομηνία και ώρα του ραντεβού
-                    duration INTEGER,        -- Διάρκεια ραντεβού σε λεπτά
+                    id INTEGER PRIMARY KEY NOT NULL,  -- Πρωτεύων κλειδί για μοναδική ταυτοποίηση
+                    customer_id INTEGER NOT NULL,     -- Αναφορά στο ID του πελάτη
+                    date_time TEXT NOT NULL,          -- Ημερομηνία και ώρα του ραντεβού
+                    duration INTEGER NOT NULL,        -- Διάρκεια ραντεβού σε λεπτά
                     FOREIGN KEY (customer_id) REFERENCES customers (id)  -- Σχέση με τον πίνακα πελατών
                  )''')
     conn.commit()
@@ -36,18 +36,27 @@ class Customer:
         self.email = email
 
     def save_to_db(self):
-        # Αποθηκεύει τον πελάτη στη βάση δεδομένων
+    # Αποθηκεύει ή ενημερώνει τον πελάτη στη βάση δεδομένων βάσει του id
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
-                c.execute('''
-                INSERT INTO customers (first_name, last_name, phone, email)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(phone) DO UPDATE SET
-                    first_name=excluded.first_name,
-                    last_name=excluded.last_name,
-                    email=excluded.email
-            ''', (self.first_name, self.last_name, self.phone, self.email))
+
+                # Ελέγχει αν υπάρχει πελάτης με το συγκεκριμένο id
+                c.execute('SELECT * FROM customers WHERE id = ?', (self.id,))
+                existing_customer = c.fetchone()
+
+                if existing_customer:
+                    # Αν υπάρχει, ενημερώνει τα στοιχεία
+                    c.execute('''
+                        UPDATE customers SET first_name = ?, last_name = ?, phone = ?, email = ?
+                        WHERE id = ?
+                    ''', (self.first_name, self.last_name, self.phone, self.email, self.id))
+                else:
+                    # Αν δεν υπάρχει, εισάγει νέο πελάτη
+                    c.execute('''
+                        INSERT INTO customers (id, first_name, last_name, phone, email)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (self.id, self.first_name, self.last_name, self.phone, self.email))
         except sqlite3.Error as e:
             raise e
 
@@ -83,16 +92,29 @@ class Appointment:
         self.duration = duration
 
     def save_to_db(self):
-        # Αποθηκεύει το ραντεβού στη βάση δεδομένων εάν δεν υπάρχει σύγκρουση
-        if not self.check_for_overlap():
-            conn = sqlite3.connect('salon_appointments.db')
-            c = conn.cursor()
-            c.execute('INSERT INTO appointments (customer_id, date_time, duration) VALUES (?, ?, ?)',
-                      (self.customer_id, self.date_time.isoformat(), self.duration))
-            conn.commit()
-            conn.close()
-        else:
-            print("Δεν είναι δυνατή η κράτηση επικαλυπτόμενων ραντεβού.")
+    # Αποθηκεύει ή ενημερώνει τον πελάτη στη βάση δεδομένων βάσει του id
+            try:
+                with sqlite3.connect('salon_appointments.db') as conn:
+                    c = conn.cursor()
+
+                    # Ελέγχει αν υπάρχει πελάτης με το συγκεκριμένο id
+                    c.execute('SELECT * FROM customers WHERE id = ?', (self.id,))
+                    existing_customer = c.fetchone()
+
+                    if existing_customer:
+                        # Αν υπάρχει, ενημερώνει τα στοιχεία
+                        c.execute('''
+                            UPDATE customers SET first_name = ?, last_name = ?, phone = ?, email = ?
+                            WHERE id = ?
+                        ''', (self.first_name, self.last_name, self.phone, self.email, self.id))
+                    else:
+                        # Αν δεν υπάρχει, εισάγει νέο πελάτη
+                        c.execute('''
+                            INSERT INTO customers (id, first_name, last_name, phone, email)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (self.id, self.first_name, self.last_name, self.phone, self.email))
+            except sqlite3.Error as e:
+                raise e
 
     def check_for_overlap(self):
         # Ελέγχει για επικαλύψεις με ήδη υπάρχοντα ραντεβού
@@ -114,7 +136,14 @@ class Appointment:
     @staticmethod
     def delete_from_db(appointment_id):
         # Διαγράφει ραντεβού από τη βάση δεδομένων βάσει του ID
-        conn = sqlite3.connect('salon_appointments.db')
+        try:
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
+                conn.commit()
+        except sqlite3.Error as e:
+            print(f"Σφάλμα διαγραφής ραντεβού: {e}")
+
 
 ## Σημειώσεις
 
