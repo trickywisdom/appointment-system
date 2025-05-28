@@ -147,23 +147,3 @@ class Appointment:
 
 ## Σημειώσεις
 
-# Το σφάλμα database is locked στη SQLite σημαίνει ότι κάποια σύνδεση (ή cursor) δεν έχει κλείσει σωστά ή έχει μείνει ανοιχτή λόγω προηγούμενου σφάλματος. Αν δεν την απελευθερώσεις (ή κάνεις rollback), η βάση παραμένει κλειδωμένη και δεν επιτρέπει νέες εγγραφές.
-
-# 1. Πάντα να χρησιμοποιείς with για τις συνδέσεις στη SQLite
-
-# def save_to_db(self):
-#     try:
-#         with sqlite3.connect("mydb.db") as conn:
-#             cursor = conn.cursor()
-#             cursor.execute(
-#                 "INSERT INTO customers (first_name, last_name, phone, email) VALUES (?, ?, ?, ?)",
-#                 (self.first_name, self.last_name, self.phone, self.email)
-#             )
-#     except sqlite3.Error as e:
-#         raise e
-
-# ✅ Άρα χρειάζομαι conn.commit();
-
-# Μέσα σε with → ✨ Όχι, δεν χρειάζεται. Το κάνει μόνο του στο τέλος.
-# Χωρίς with → ✅ Ναι, είναι υποχρεωτικό. Χωρίς αυτό, τίποτα δεν αποθηκεύεται
-
