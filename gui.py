@@ -1,4 +1,4 @@
-# install pip tkcalendar xlsxwriter pillow sv-ttk
+# pip install tkcalendar xlsxwriter smtplib pillow sv-ttk tkinter-tooltip
 import tkinter as tk
 from tkinter import messagebox, ttk
 # from tkinter import font as tkFont
