@@ -126,6 +126,7 @@ class Appointment:
         self.notes = notes
         self.id = id
         self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
+
     
     def save_to_db(self, id=None):
     # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
