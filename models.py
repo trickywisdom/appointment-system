@@ -191,6 +191,44 @@ class Appointment:
         finally:
             conn.close()
 
+    class Appointment:
+    # Existing initialization method
+    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
+        self.customer_id = customer_id
+        self.date = date  # Suppose format is "YYYY-MM-DD"
+        self.time = time  # Suppose format is "HH:MM"
+        self.duration = duration
+        self.services = services
+        self.notes = notes
+        self.id = id
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
+
+    # Existing methods...
+
+    def is_valid_time_day(self):
+        # Έλεγχος εγκυρότητας ημέρας και ώρας ραντεβού
+        appointment_start_time = self.date_time.time()
+        appointment_end_time = (self.date_time + timedelta(minutes=self.duration)).time()
+
+        # Ορίζουμε το εύρος των ωρών
+        valid_start = datetime.strptime("10:00", "%H:%M").time()
+        valid_end = datetime.strptime("20:00", "%H:%M").time()
+
+        #Ελέγχουμε αν η ώρα του ραντεβού είναι εντός ορίων
+        if not (valid_start <= appointment_start_time < valid_end and appointment_end_time <= valid_end):
+            return False
+
+        # Καθορίζουμε ποιά μέρα είναι το ραντεβού
+        weekday = self.date_time.weekday()
+
+        # Ελέγχουμε αν η μέρα είναι απο Τρίτη  (1) έως Κυριακή (5)
+        if not (1 <= weekday <= 5):
+            return False
+
+        return True
+
+    
+    
     @staticmethod
     def get_by_date(date):
         try:
