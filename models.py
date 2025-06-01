@@ -113,8 +113,7 @@ class Customer:
         except Exception as e:
             print(f"Error retrieving customer by ID: {e}")
             return None
-        # finally:
-        #     conn.close()
+        
             
 
 class Appointment:
@@ -164,8 +163,6 @@ class Appointment:
         c = conn.cursor()
         start_time = self.date_time
         end_time = self.date_time + timedelta(minutes=self.duration)
-
-        # Query for overlapping appointments
         c.execute('''
             SELECT * FROM appointments 
             WHERE (
@@ -174,7 +171,7 @@ class Appointment:
             )
         ''', (start_time.isoformat(), end_time.isoformat(), start_time.isoformat()))
 
-        overlap = c.fetchone()  # This checks if there is any overlapping appointment
+        overlap = c.fetchone()  #Έλεγχος αν υπάρχει επικαλυπτούμενο ραντεβού
         conn.close()
         return overlap is not None
 
@@ -192,7 +189,7 @@ class Appointment:
             conn.close()
 
     class Appointment:
-    # Existing initialization method
+    
     def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
         self.customer_id = customer_id
         self.date = date  # Suppose format is "YYYY-MM-DD"
@@ -203,7 +200,7 @@ class Appointment:
         self.id = id
         self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
 
-    # Existing methods...
+    
 
     def is_valid_time_day(self):
         # Έλεγχος εγκυρότητας ημέρας και ώρας ραντεβού
