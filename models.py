@@ -126,7 +126,8 @@ class Appointment:
         self.services = services
         self.notes = notes
         self.id = id
-
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
+    
     def save_to_db(self, id=None):
     # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
             try:
@@ -159,21 +160,24 @@ class Appointment:
             #     conn.close()
 
     def check_for_overlap(self):
-        # Ελέγχει για επικαλύψεις με ήδη υπάρχοντα ραντεβού
         conn = sqlite3.connect('salon_appointments.db')
         c = conn.cursor()
         start_time = self.date_time
         end_time = self.date_time + timedelta(minutes=self.duration)
-        
-        # Ερώτημα για ανεύρεση επικαλυπτόμενων ραντεβού
-        c.execute('''SELECT * FROM appointments WHERE (
-                        (date_time BETWEEN ? AND ?) OR
-                        (? BETWEEN date_time AND datetime(date_time, '+' || duration || ' minutes'))
-                     )''', (start_time.isoformat(), end_time.isoformat(), start_time.isoformat()))
-        
-        overlap = c.fetchone()  # Επιστρέφει το πρώτο επικαλυπτόμενο ραντεβού αν υπάρχει
+
+        # Query for overlapping appointments
+        c.execute('''
+            SELECT * FROM appointments 
+            WHERE (
+                (datetime(date || ' ' || time) BETWEEN ? AND ?)
+                OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
+            )
+        ''', (start_time.isoformat(), end_time.isoformat(), start_time.isoformat()))
+
+        overlap = c.fetchone()  # This checks if there is any overlapping appointment
         conn.close()
         return overlap is not None
+
 
     @staticmethod
     def delete_from_db(appointment_id):
