@@ -3,8 +3,8 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 # from tkinter import font as tkFont
-import models_revised
-from models_revised import Customer, Appointment
+import models
+from models import Customer, Appointment
 from tkcalendar import DateEntry
 from tkcalendar import Calendar
 from datetime import datetime, timedelta # ,date
@@ -15,7 +15,7 @@ import locale
 locale.setlocale(locale.LC_TIME, "el_GR.UTF-8")  # Linux/macOS
 locale.setlocale(locale.LC_TIME, "Greek_Greece.1253")  # Windows alternative
 
-models_revised.setup_database()
+models.setup_database()
 
 class MainApp(tk.Tk):
     def __init__(self):
