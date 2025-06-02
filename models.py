@@ -162,21 +162,21 @@ class Appointment:
             #     conn.commit()
             #     conn.close()
 
-def check_for_overlap(self):
-    start_str = self.date_time.strftime("%Y-%m-%d %H:%M")
-    end_time = self.date_time + timedelta(minutes=self.duration)
-    end_str = end_time.strftime("%Y-%m-%d %H:%M")
-    with sqlite3.connect('salon_appointments.db') as conn:
-        c = conn.cursor()
-        c.execute('''
-            SELECT * FROM appointments 
-            WHERE (
-                (datetime(date || ' ' || time) BETWEEN ? AND ?)
-                OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
-            )
-        ''', (start_str, end_str, start_str))
-        overlap = c.fetchone()
-        return overlap is not None
+    def check_for_overlap(self):
+        start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
+        end_time = self.date_time + timedelta(minutes=int(self.duration))
+        end_str = end_time.strftime("%d-%m-%Y %H:%M")
+        with sqlite3.connect('salon_appointments.db') as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT * FROM appointments 
+                WHERE (
+                    (datetime(date || ' ' || time) BETWEEN ? AND ?)
+                    OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
+                )
+            ''', (start_str, end_str, start_str))
+            overlap = c.fetchone()
+            return overlap is not None
 
 
     @staticmethod
