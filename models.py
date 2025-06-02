@@ -125,7 +125,6 @@ class Appointment:
         self.services = services
         self.notes = notes
         self.id = id
-        # Parse date and time correctly
         self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
 
 
