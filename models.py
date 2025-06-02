@@ -164,7 +164,7 @@ class Appointment:
 
     def check_for_overlap(self):
         start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
-        end_time = self.date_time + timedelta(minutes=self.duration)
+        end_time = self.date_time + timedelta(minutes=int(self.duration))
         end_str = end_time.strftime("%d-%m-%Y %H:%M")
         conn = sqlite3.connect('salon_appointments.db')
         c = conn.cursor()
