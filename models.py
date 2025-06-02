@@ -117,12 +117,12 @@ class Customer:
             
 
 class Appointment:
-    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
+    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None)
         self.customer_id = customer_id
         self.date = date
         self.time = time
         self.services = services
-        self.duration = duration
+        self.duration = int(duration)
         self.notes = notes
         self.id = id
         self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
