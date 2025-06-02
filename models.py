@@ -199,7 +199,7 @@ class Appointment:
         self.services = services
         self.notes = notes
         self.id = id
-        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
 
     
 
