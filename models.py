@@ -117,15 +117,16 @@ class Customer:
             
 
 class Appointment:
-    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
-        self.customer_id = customer_id
-        self.date = date  # "DD-MM-YYYY"
-        self.time = time  # "HH:MM"
-        self.duration = duration
-        self.services = services
-        self.notes = notes
-        self.id = id
-        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
+    self.customer_id = customer_id
+    self.date = date
+    self.time = time
+    self.services = services
+    self.duration = duration
+    self.notes = notes
+    self.id = id
+    self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+
 
 
 
@@ -162,21 +163,22 @@ class Appointment:
             #     conn.close()
 
     def check_for_overlap(self):
+        start_str = self.date_time.strftime("%Y-%m-%d %H:%M")
+        end_time = self.date_time + timedelta(minutes=self.duration)
+        end_str = end_time.strftime("%Y-%m-%d %H:%M")
         conn = sqlite3.connect('salon_appointments.db')
         c = conn.cursor()
-        start_time = self.date_time
-        end_time = self.date_time + timedelta(minutes=self.duration)
         c.execute('''
             SELECT * FROM appointments 
             WHERE (
                 (datetime(date || ' ' || time) BETWEEN ? AND ?)
                 OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
             )
-        ''', (start_time.isoformat(), end_time.isoformat(), start_time.isoformat()))
-
-        overlap = c.fetchone()  #Έλεγχος αν υπάρχει επικαλυπτούμενο ραντεβού
+        ''', (start_str, end_str, start_str))
+        overlap = c.fetchone()
         conn.close()
         return overlap is not None
+
 
 
     @staticmethod
