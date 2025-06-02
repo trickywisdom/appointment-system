@@ -119,13 +119,15 @@ class Customer:
 class Appointment:
     def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
         self.customer_id = customer_id
-        self.date = date  # Εισάγει την ημερομηνία
-        self.time = time  #ώρα 
+        self.date = date  # "DD-MM-YYYY"
+        self.time = time  # "HH:MM"
         self.duration = duration
         self.services = services
         self.notes = notes
         self.id = id
-        self.date_time = datetime.strptime(date_string, '%d-%m-%Y %H:%M')
+        # Parse date and time correctly
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+
 
 
     
@@ -190,17 +192,7 @@ class Appointment:
         finally:
             conn.close()
 
-    class Appointment:
-    
-    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
-        self.customer_id = customer_id
-        self.date = date  # Suppose format is "YYYY-MM-DD"
-        self.time = time  # Suppose format is "HH:MM"
-        self.duration = duration
-        self.services = services
-        self.notes = notes
-        self.id = id
-        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+
 
     
 
