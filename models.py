@@ -21,8 +21,6 @@ def setup_database():
     c.execute('''CREATE TABLE IF NOT EXISTS appointments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Πρωτεύων κλειδί για μοναδική ταυτοποίηση
                     customer_id INTEGER NOT NULL,     -- Αναφορά στο ID του πελάτη
-                    date TEXT NOT NULL,           -- Ημερομηνία
-                    time TEXT NOT NULL,                 --και ώρα του ραντεβού
                     datetime TEXT NOT NULL,
                     services TEXT NOT NULL,
                     duration NOT NULL DEFAULT 20,        -- Διάρκεια ραντεβού σε λεπτά
@@ -120,13 +118,11 @@ class Customer:
 class Appointment:
     def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
         self.customer_id = customer_id
-        self.date = date
-        self.time = time
         self.services = services
         self.duration = int(duration)
         self.notes = notes
         self.id = id
-        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
 
 
 
@@ -149,36 +145,22 @@ class Appointment:
                     if existing_appointment:
                         # Αν υπάρχει, ενημερώνει τα στοιχεία
                         c.execute('''
-                            UPDATE appointments SET date = ?, time = ?, services = ?, duration = ?, notes = ?
+                            UPDATE appointments SET datetime = ?,  services = ?, duration = ?, notes = ?
                             WHERE id = ?
                         ''', (self.date, self.time, self.services, self.duration, self.notes, id))
                     else:
                         # Αν δεν υπάρχει, εισάγει νέο πελάτη
                         c.execute('''
-                            INSERT INTO appointments (id, customer_id, date, time, services, duration, notes)
+                            INSERT INTO appointments (id, customer_id, datetime, services, duration, notes)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (self.id, self.customer_id, self.date, self.time, self.services, self.duration, self.notes))
+                        ''', (self.id, self.customer_id, self.datetime, self.services, self.duration, self.notes))
                         self.id = c.lastrowid
             except Exception as e:
                 print(f"Error retrieving customer by ID: {e}")
                 raise e
 
 
-    def check_for_overlap(self):
-        start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
-        end_time = self.date_time + timedelta(minutes=int(self.duration))
-        end_str = end_time.strftime("%d-%m-%Y %H:%M")
-        with sqlite3.connect('salon_appointments.db') as conn:
-            c = conn.cursor()
-            c.execute('''
-                SELECT * FROM appointments 
-                WHERE (
-                    (datetime(date || ' ' || time) BETWEEN ? AND ?)
-                    OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
-                )
-            ''', (start_str, end_str, start_str))
-            overlap = c.fetchone()
-            return overlap is not None
+
 
 
     @staticmethod
@@ -207,27 +189,6 @@ def delete_from_db(phone):
 
     
 
-    def is_valid_time_day(self):
-        # Έλεγχος εγκυρότητας ημέρας και ώρας ραντεβού
-        appointment_start_time = self.date_time.time()
-        appointment_end_time = (self.date_time + timedelta(minutes=self.duration)).time()
-
-        # Ορίζουμε το εύρος των ωρών
-        valid_start = datetime.strptime("10:00", "%H:%M").time()
-        valid_end = datetime.strptime("20:00", "%H:%M").time()
-
-        #Ελέγχουμε αν η ώρα του ραντεβού είναι εντός ορίων
-        if not (valid_start <= appointment_start_time < valid_end and appointment_end_time <= valid_end):
-            return False
-
-        # Καθορίζουμε ποιά μέρα είναι το ραντεβού
-        weekday = self.date_time.weekday()
-
-        # Ελέγχουμε αν η μέρα είναι απο Τρίτη  (1) έως Κυριακή (5)
-        if not (1 <= weekday <= 5):
-            return False
-
-        return True
 
     
     
@@ -246,19 +207,6 @@ def delete_from_db(phone):
             conn.close()
             
 
-    # @staticmethod
-    # def get_by_customer_id(customer_id):
-    #     try:
-    #         with sqlite3.connect('salon_appointments.db') as conn:
-    #             c = conn.cursor()
-    #             c.execute("SELECT customer_id, date, time, services, duration, notes, id FROM appointments WHERE customer_id = ? ORDER BY date ASC, time ASC", (customer_id,))
-    #             appointments = c.fetchall()
-    #             return [Appointment(customer_id=row[0], date=row[1], time=row[2], services=row[3], duration=row[4], notes=row[5], id=row[6]) for row in appointments]
-    #     except sqlite3.Error as e:
-    #         print(f"Error fetching all appointments(get_by_patient_id): {e}")
-    #         return []
-    #     finally:
-    #         conn.close()
 
     @staticmethod
     def get_all():
@@ -268,7 +216,7 @@ def delete_from_db(phone):
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
-                c.execute("SELECT id, customer_id, date, time, services, duration, notes FROM appointments ORDER BY date ASC, time ASC")
+                c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY datetime ASC")
                 appointments = [Appointment(row[1], row[2], row[3], row[4], row[5], row[6], id=row[0]) for row in c.fetchall()]
                 return appointments
         except sqlite3.Error as e:
