@@ -153,14 +153,11 @@ class Appointment:
                             INSERT INTO appointments (id, customer_id, date, time, services, duration, notes)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
                         ''', (self.id, self.customer_id, self.date, self.time, self.services, self.duration, self.notes))
-                        # conn.commit()
                         self.id = c.lastrowid
             except Exception as e:
                 print(f"Error retrieving customer by ID: {e}")
                 raise e
-            # finally:
-            #     conn.commit()
-            #     conn.close()
+
 
     def check_for_overlap(self):
         start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
