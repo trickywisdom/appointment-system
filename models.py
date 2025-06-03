@@ -76,7 +76,6 @@ class Customer:
         # Διαγράφει πελάτη από τη βάση δεδομένων βάσει του τηλεφώνου
         conn = sqlite3.connect('salon_appointments.db')
         c = conn.cursor()
-        
         c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
         conn.commit()
         conn.close()
@@ -124,12 +123,12 @@ class Appointment:
         self.date = date
         self.time = time
         self.services = services
-        self.duration = duration
+        self.duration = int(duration)
         self.notes = notes
         self.id = id
         self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
 
-        
+
 
 
     
@@ -159,14 +158,11 @@ class Appointment:
                             INSERT INTO appointments (id, customer_id, date, time, services, duration, notes)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
                         ''', (self.id, self.customer_id, self.date, self.time, self.services, self.duration, self.notes))
-                        # conn.commit()
                         self.id = c.lastrowid
             except Exception as e:
                 print(f"Error retrieving customer by ID: {e}")
                 raise e
-            # finally:
-            #     conn.commit()
-            #     conn.close()
+
 
     def check_for_overlap(self):
         start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
@@ -175,7 +171,7 @@ class Appointment:
         with sqlite3.connect('salon_appointments.db') as conn:
             c = conn.cursor()
             c.execute('''
-                SELECT * FROM appointments Add commentMore actions
+                SELECT * FROM appointments 
                 WHERE (
                     (datetime(date || ' ' || time) BETWEEN ? AND ?)
                     OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
@@ -183,7 +179,6 @@ class Appointment:
             ''', (start_str, end_str, start_str))
             overlap = c.fetchone()
             return overlap is not None
-
 
 
     @staticmethod
