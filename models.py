@@ -23,6 +23,7 @@ def setup_database():
                     customer_id INTEGER NOT NULL,     -- Αναφορά στο ID του πελάτη
                     date TEXT NOT NULL,           -- Ημερομηνία
                     time TEXT NOT NULL,                 --και ώρα του ραντεβού
+                    datetime TEXT NOT NULL,
                     services TEXT NOT NULL,
                     duration NOT NULL DEFAULT 20,        -- Διάρκεια ραντεβού σε λεπτά
                     notes TEXT,
@@ -75,6 +76,7 @@ class Customer:
         # Διαγράφει πελάτη από τη βάση δεδομένων βάσει του τηλεφώνου
         conn = sqlite3.connect('salon_appointments.db')
         c = conn.cursor()
+        
         c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
         conn.commit()
         conn.close()
@@ -117,21 +119,25 @@ class Customer:
             
 
 class Appointment:
-def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
-    self.customer_id = customer_id
-    self.date = date
-    self.time = time
-    self.services = services
-    self.duration = duration
-    self.notes = notes
-    self.id = id
-    self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
+    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
+        self.customer_id = customer_id
+        self.date = date
+        self.time = time
+        self.services = services
+        self.duration = duration
+        self.notes = notes
+        self.id = id
+        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%d-%m-%Y %H:%M")
 
-
+        
 
 
     
     def save_to_db(self, id=None):
+            
+
+            if self.check_for_overlap():
+                raise ValueError("check_for_overlap ΕΡΡΟΡ")
     # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
             try:
                 with sqlite3.connect('salon_appointments.db') as conn:
@@ -163,21 +169,20 @@ def __init__(self, customer_id, date, time, services, duration=20, notes="", id=
             #     conn.close()
 
     def check_for_overlap(self):
-        start_str = self.date_time.strftime("%Y-%m-%d %H:%M")
-        end_time = self.date_time + timedelta(minutes=self.duration)
-        end_str = end_time.strftime("%Y-%m-%d %H:%M")
-        conn = sqlite3.connect('salon_appointments.db')
-        c = conn.cursor()
-        c.execute('''
-            SELECT * FROM appointments 
-            WHERE (
-                (datetime(date || ' ' || time) BETWEEN ? AND ?)
-                OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
-            )
-        ''', (start_str, end_str, start_str))
-        overlap = c.fetchone()
-        conn.close()
-        return overlap is not None
+        start_str = self.date_time.strftime("%d-%m-%Y %H:%M")
+        end_time = self.date_time + timedelta(minutes=int(self.duration))
+        end_str = end_time.strftime("%d-%m-%Y %H:%M")
+        with sqlite3.connect('salon_appointments.db') as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT * FROM appointments Add commentMore actions
+                WHERE (
+                    (datetime(date || ' ' || time) BETWEEN ? AND ?)
+                    OR (? BETWEEN datetime(date || ' ' || time) AND datetime(date || ' ' || time, '+' || duration || ' minutes'))
+                )
+            ''', (start_str, end_str, start_str))
+            overlap = c.fetchone()
+            return overlap is not None
 
 
 

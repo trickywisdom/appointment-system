@@ -962,9 +962,9 @@ class NewAppointPage(tk.Frame):
             # print("1", selected_name, selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
             # Create and save the appointment
             appointment = Appointment(selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
-            # print("2", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
+            print("2", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
             appointment.save_to_db() # IF ALREADY EXISTS WE SHOULD UPDATE
-            # print("3", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
+            print("3", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
             messagebox.showinfo("Επιτυχία", f"Αποθηκεύτηκε το ραντεβού για {selected_name}")
 
             # # Clear input fields
