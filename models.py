@@ -189,11 +189,11 @@ class Appointment:
 
     @staticmethod
     def get_by_date(datetime_value):
-        #datetime_str = datetime_value.strftime("%Y-%m-%d %H:%M")
+        datetime_str = datetime_value.strftime("%Y-%m-%d %H:%M")
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
-                c.execute("SELECT * FROM appointments WHERE datetime = ? ORDER BY datetime ASC", (datetime_value,))
+                c.execute("SELECT * FROM appointments WHERE datetime = ?", (datetime_str,))
                 appointments = [Appointment(id=row[0], customer_id=row[1], datetime_str=row[2], services=row[3], duration=row[4], notes=row[5]) for row in c.fetchall()]
                 return appointments
         except sqlite3.Error as e:
