@@ -205,28 +205,28 @@ class Appointment:
 
 
     @staticmethod
-@staticmethod
-def get_all():
-    try:
-        with sqlite3.connect('salon_appointments.db') as conn:
-            c = conn.cursor()
-            c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY datetime ASC")
-            appointments = []
-            for row in c.fetchall():
-                appointments.append(Appointment(
-                    customer_id=row[1],
-                    datetime_str=row[2],
-                    services=row[3],
-                    duration=row[4],
-                    notes=row[5],
-                    id=row[0]
-                ))
-            return appointments
-    except sqlite3.Error as e:
-        print(f"Error fetching all appointments: {e}")
-        return []
-    finally:
-        conn.close()
+
+    def get_all():
+        try:
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY datetime ASC")
+                appointments = []
+                for row in c.fetchall():
+                    appointments.append(Appointment(
+                        customer_id=row[1],
+                        datetime_str=row[2],
+                        services=row[3],
+                        duration=row[4],
+                        notes=row[5],
+                        id=row[0]
+                    ))
+                return appointments
+        except sqlite3.Error as e:
+            print(f"Error fetching all appointments: {e}")
+            return []
+        finally:
+            conn.close()
 
 
 
