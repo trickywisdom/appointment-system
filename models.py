@@ -185,7 +185,7 @@ class Appointment:
         except sqlite3.Error as e:
             print(f"Error deleting customer and appointments: {e}")
         finally:
-        conn.close()
+            conn.close()
 
     @staticmethod
     def get_by_date(datetime_value):
