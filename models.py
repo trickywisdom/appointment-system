@@ -189,7 +189,7 @@ class Appointment:
 
     @staticmethod
     def get_by_date(datetime_value):
-        datetime_str = datetime_value.strftime("%Y-%m-%d %H:%M")
+        #datetime_str = datetime_value.strftime("%Y-%m-%d %H:%M")
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
