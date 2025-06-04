@@ -116,13 +116,14 @@ class Customer:
             
 
 class Appointment:
-    def __init__(self, customer_id, date, time, services, duration=20, notes="", id=None):
+    def __init__(self, customer_id, datetime_str, services, duration=20, notes="", id=None):
         self.customer_id = customer_id
         self.services = services
-        self.duration = int(duration)
+        self.duration = duration
         self.notes = notes
         self.id = id
-        self.date_time = datetime.strptime(f"{self.date} {self.time}", "%Y-%m-%d %H:%M")
+        self.datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+
 
 
 
@@ -133,7 +134,8 @@ class Appointment:
 
             if self.check_for_overlap():
                 raise ValueError("check_for_overlap ΕΡΡΟΡ")
-    # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
+                datetime_str = self.datetime.strftime("%Y-%m-%d %H:%M")
+        # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
             try:
                 with sqlite3.connect('salon_appointments.db') as conn:
                     c = conn.cursor()
@@ -147,7 +149,7 @@ class Appointment:
                         c.execute('''
                             UPDATE appointments SET datetime = ?,  services = ?, duration = ?, notes = ?
                             WHERE id = ?
-                        ''', (self.date, self.time, self.services, self.duration, self.notes, id))
+                        ''', (self.datetime, self.services, self.duration, self.notes, id))
                     else:
                         # Αν δεν υπάρχει, εισάγει νέο πελάτη
                         c.execute('''
@@ -185,19 +187,13 @@ def delete_from_db(phone):
     finally:
         conn.close()
 
-
-
-    
-
-
-    
-    
     @staticmethod
-    def get_by_date(date):
+    def get_by_date(datetime_value):
+        datetime_str = datetime_value.strftime("%Y-%m-%d %H:%M")
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
-                c.execute("SELECT * FROM appointments WHERE date = ? ORDER BY time ASC", (date,))
+                c.execute("SELECT * FROM appointments WHERE datetime = ? ORDER BY datetime ASC", (datetime_value,))
                 appointments = [Appointment(id=row[0], customer_id=row[1], date=row[2], time=row[3], services=row[4], duration=row[5], notes=row[6]) for row in c.fetchall()]
                 return appointments
         except sqlite3.Error as e:
