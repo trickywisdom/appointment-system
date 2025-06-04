@@ -194,7 +194,7 @@ class Appointment:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
                 c.execute("SELECT * FROM appointments WHERE datetime = ? ORDER BY datetime ASC", (datetime_value,))
-                appointments = [Appointment(id=row[0], customer_id=row[1], date=row[2], time=row[3], services=row[4], duration=row[5], notes=row[6]) for row in c.fetchall()]
+                appointments = [Appointment(id=row[0], customer_id=row[1], datetime=row[2], services=row[3], duration=row[4], notes=row[5]) for row in c.fetchall()]
                 return appointments
         except sqlite3.Error as e:
             print(f"Error fetching all appointments(get_by_date): {e}")
@@ -205,21 +205,29 @@ class Appointment:
 
 
     @staticmethod
-    def get_all():
-        """
-        Retrieve all appointments.
-        """
-        try:
-            with sqlite3.connect('salon_appointments.db') as conn:
-                c = conn.cursor()
-                c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY datetime ASC")
-                appointments = [Appointment(row[1], row[2], row[3], row[4], row[5], id=row[0]) for row in c.fetchall()]
-                return appointments
-        except sqlite3.Error as e:
-            print(f"Error fetching all appointments: {e}")
-            return []
-        finally:
-            conn.close()
+@staticmethod
+def get_all():
+    try:
+        with sqlite3.connect('salon_appointments.db') as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY datetime ASC")
+            appointments = []
+            for row in c.fetchall():
+                appointments.append(Appointment(
+                    customer_id=row[1],
+                    datetime_str=row[2],
+                    services=row[3],
+                    duration=row[4],
+                    notes=row[5],
+                    id=row[0]
+                ))
+            return appointments
+    except sqlite3.Error as e:
+        print(f"Error fetching all appointments: {e}")
+        return []
+    finally:
+        conn.close()
+
 
 
 ## Σημειώσεις
