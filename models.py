@@ -194,7 +194,7 @@ class Appointment:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
                 c.execute("SELECT * FROM appointments WHERE datetime = ? ORDER BY datetime ASC", (datetime_value,))
-                appointments = [Appointment(id=row[0], customer_id=row[1], datetime=row[2], services=row[3], duration=row[4], notes=row[5]) for row in c.fetchall()]
+                appointments = [Appointment(id=row[0], customer_id=row[1], datetime_str=row[2], services=row[3], duration=row[4], notes=row[5]) for row in c.fetchall()]
                 return appointments
         except sqlite3.Error as e:
             print(f"Error fetching all appointments(get_by_date): {e}")
