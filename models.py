@@ -122,8 +122,8 @@ class Appointment:
         self.duration = duration
         self.notes = notes
         self.id = id
-        self.datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
-
+        #self.datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+        self.datetime = datetime_str
 
 
 
@@ -134,7 +134,7 @@ class Appointment:
 
             if self.check_for_overlap():
                 raise ValueError("check_for_overlap ΕΡΡΟΡ")
-                datetime_str = self.datetime.strftime("%Y-%m-%d %H:%M")
+                #datetime_str = self.datetime.strftime("%Y-%m-%d %H:%M")
         # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
             try:
                 with sqlite3.connect('salon_appointments.db') as conn:
