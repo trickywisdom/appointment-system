@@ -165,26 +165,26 @@ class Appointment:
 
 
 
+    
     @staticmethod
-@staticmethod
-def delete_from_db(phone):
-    #Συνδεση στο databse
-    conn = sqlite3.connect('salon_appointments.db')
-    c = conn.cursor()
-    try:
-        # Ευρεση του customer ID βάση αριθμού τηλεφώνου
-        c.execute('SELECT id FROM customers WHERE phone = ?', (phone,))
-        result = c.fetchone()
-        if result:
-            customer_id = result[0]
-            # Διαγραφή όλων των ραντεβού του πελάτη πρώτα
-            c.execute('DELETE FROM appointments WHERE customer_id = ?', (customer_id,))
-        # Διαγραφη του πελάτη
-        c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
-        conn.commit()
-    except sqlite3.Error as e:
-        print(f"Error deleting customer and appointments: {e}")
-    finally:
+    def delete_from_db(phone):
+        #Συνδεση στο databse
+        conn = sqlite3.connect('salon_appointments.db')
+        c = conn.cursor()
+        try:
+            # Ευρεση του customer ID βάση αριθμού τηλεφώνου
+            c.execute('SELECT id FROM customers WHERE phone = ?', (phone,))
+            result = c.fetchone()
+            if result:
+                customer_id = result[0]
+                # Διαγραφή όλων των ραντεβού του πελάτη πρώτα
+                c.execute('DELETE FROM appointments WHERE customer_id = ?', (customer_id,))
+            # Διαγραφη του πελάτη
+            c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
+            conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error deleting customer and appointments: {e}")
+        finally:
         conn.close()
 
     @staticmethod
