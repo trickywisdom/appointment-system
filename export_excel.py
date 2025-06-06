@@ -1,28 +1,31 @@
 # Εξαγωγή ραντεβού σε Excel
 import xlsxwriter
 from datetime import datetime
-import models
+import models_revised
 import os
 
-def export_appointments_to_excel(date, filename=None):
+def export_appointments_to_excel(date_str, filename=None):
     """
-    Εξάγει τα ραντεβού μιας ημέρας σε αρχείο Excel
+    Εξάγει τα ραντεβού της επιλεγμένης μέρας σε Excel
     
     Args:
-        date: Η ημερομηνία για την οποία θα εξαχθούν τα ραντεβού
-        filename: Προαιρετικό όνομα αρχείου. Αν δεν δοθεί, δημιουργείται αυτόματα
-    
-    Returns:
-        Το path του αρχείου που δημιουργήθηκε
+        date_str: Ημερομηνία ως string (μορφή "DD-MM-YYYY")
+        filename: Προαιρετικό όνομα αρχείου
     """
-    
-    # Δημιουργία ονόματος αρχείου αν δεν δόθηκε
-    if not filename:
-        date_str = date.strftime('%Y_%m_%d')
-        filename = f'ραντεβού_{date_str}.xlsx'
-    
-    # Λήψη ραντεβού από τη βάση
-    appointments = models.Appointment.get_by_date(date)
+    try:
+        # Μετατροπή σε ημερομηνία για έλεγχο εγκυρότητας
+        date_obj = datetime.strptime(date_str, "%d-%m-%Y").date()
+        
+        # Δημιουργία ονόματος αρχείου αν δεν δοθεί
+        if not filename:
+            filename = f'ραντεβού_{date_obj.strftime("%Y-%m-%d")}.xlsx'
+        
+        # Λήψη ραντεβού από τη βάση
+        appointments = models_revised.Appointment.get_by_date(date_obj)
+        print("Βρέθηκαν ραντεβού:", appointments)
+        
+    except Exception as e:
+        raise Exception(f"Failed to export appointments: {str(e)}")
     
     # Δημιουργία Excel αρχείου
     workbook = xlsxwriter.Workbook(filename)
@@ -56,11 +59,17 @@ def export_appointments_to_excel(date, filename=None):
         'bold': True,
         'font_size': 16,
         'align': 'center',
-        'valign': 'vcenter'
+        'valign': 'vcenter',
+        'border': 1
     })
-    
+    # Μορφοποίηση για ώρα (HH:MM:SS)
+    time_format = workbook.add_format({
+        'num_format': 'HH:MM',  # Μορφοποίηση ώρας
+        'align': 'center'
+    })
+    print("So far so good1:")
     worksheet.merge_range('A1:F1', 
-                         f'Ραντεβού - {date.strftime("%A %d/%m/%Y")}', 
+                         f'Ραντεβού - {date_str}', # .strftime("%A %d/%m/%Y")
                          title_format)
     
     # Ρύθμιση πλάτους στηλών
@@ -75,15 +84,18 @@ def export_appointments_to_excel(date, filename=None):
     headers = ['Ώρα', 'Διάρκεια', 'Πελάτης', 'Τηλέφωνο', 'Υπηρεσία', 'Σημειώσεις']
     for col, header in enumerate(headers):
         worksheet.write(2, col, header, header_format)
-    
+    print("So far so good2:")
     # Δεδομένα
     row = 3
     for appt in appointments:
-        worksheet.write(row, 0, appt.date_time.strftime('%H:%M'), center_format)
+        dt_obj = datetime.strptime(appt.datetime, "%Y-%m-%d %H:%M")
+        print("dt_obj.time()",dt_obj.time())
+        worksheet.write(row, 0, dt_obj.time(), time_format)
+        # worksheet.write(row, 0, appt.datetime, center_format) # .strftime('%H:%M')
         worksheet.write(row, 1, f"{appt.duration}'", center_format)
         worksheet.write(row, 2, appt.customer_name, cell_format)
         worksheet.write(row, 3, appt.customer_phone, cell_format)
-        worksheet.write(row, 4, appt.service or '-', cell_format)
+        worksheet.write(row, 4, appt.services or '-', cell_format)
         worksheet.write(row, 5, appt.notes or '-', cell_format)
         row += 1
     
@@ -131,7 +143,7 @@ def export_customer_appointments(customer_id, filename=None):
     
     # Λήψη στοιχείων πελάτη
     customer = None
-    for c in models.Customer.get_all():
+    for c in models_revised.Customer.get_all():
         if c.id == customer_id:
             customer = c
             break
@@ -144,7 +156,7 @@ def export_customer_appointments(customer_id, filename=None):
         filename = f'ραντεβού_{customer.last_name}_{customer.first_name}.xlsx'
     
     # Λήψη ραντεβού
-    appointments = models.Appointment.get_by_customer(customer_id)
+    appointments = models_revised.Appointment.get_by_customer(customer_id)
     
     # Δημιουργία Excel
     workbook = xlsxwriter.Workbook(filename)
@@ -204,14 +216,14 @@ def export_customer_appointments(customer_id, filename=None):
     headers = ['Ημερομηνία', 'Ώρα', 'Διάρκεια', 'Υπηρεσία', 'Σημειώσεις']
     for col, header in enumerate(headers):
         worksheet.write(3, col, header, header_format)
-    
+    print("So far so good3:")
     # Δεδομένα
     row = 4
     for appt in appointments:
-        worksheet.write(row, 0, appt.date_time.strftime('%d/%m/%Y'), center_format)
-        worksheet.write(row, 1, appt.date_time.strftime('%H:%M'), center_format)
+        worksheet.write(row, 0, appt.datetime, center_format) # .strftime('%d/%m/%Y') 
+        worksheet.write(row, 1, appt.datetime, center_format) # .strftime('%H:%M')
         worksheet.write(row, 2, f"{appt.duration}'", center_format)
-        worksheet.write(row, 3, appt.service or '-', cell_format)
+        worksheet.write(row, 3, appt.services or '-', cell_format)
         worksheet.write(row, 4, appt.notes or '-', cell_format)
         row += 1
     

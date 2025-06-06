@@ -4,7 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-import models
+import models_revised
 
 
 class EmailSender:
@@ -19,7 +19,7 @@ class EmailSender:
         self.email = email
         self.password = password
 
-    def send_reminder(self, recipient_email, customer_name, appointment_time, service):
+    def send_reminder(self, recipient_email, customer_name, appointment_time, services):
         """Στέλνει email υπενθύμισης για ραντεβού"""
         try:
             # Δημιουργία μηνύματος
@@ -29,9 +29,9 @@ class EmailSender:
             msg['To'] = recipient_email
 
             # Μορφοποίηση ώρας
-            time_str = appointment_time.strftime('%H:%M')
-            date_str = appointment_time.strftime('%d/%m/%Y')
-            day_name = appointment_time.strftime('%A')
+            time_str = appointment_time#.strftime('%H:%M')
+            date_str = appointment_time#.strftime('%d/%m/%Y')
+            day_name = appointment_time#.strftime('%A')
 
             # HTML περιεχόμενο
             html = f"""
@@ -47,7 +47,7 @@ class EmailSender:
                   <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p style="margin: 5px 0;"><strong>Ημερομηνία:</strong> {day_name} {date_str}</p>
                     <p style="margin: 5px 0;"><strong>Ώρα:</strong> {time_str}</p>
-                    <p style="margin: 5px 0;"><strong>Υπηρεσία:</strong> {service}</p>
+                    <p style="margin: 5px 0;"><strong>Υπηρεσία:</strong> {services}</p>
                   </div>
 
                   <p>Παρακαλούμε να είστε στο κατάστημά μας 5 λεπτά πριν την προγραμματισμένη ώρα.</p>
@@ -78,7 +78,7 @@ class EmailSender:
 
             Ημερομηνία: {day_name} {date_str}
             Ώρα: {time_str}
-            Υπηρεσία: {service}
+            Υπηρεσία: {services}
 
             Παρακαλούμε να είστε στο κατάστημά μας 5 λεπτά πριν την προγραμματισμένη ώρα.
 
@@ -105,7 +105,7 @@ class EmailSender:
 
     def send_reminders_for_date(self, date):
         """Στέλνει υπενθυμίσεις σε όλους τους πελάτες που έχουν ραντεβού την συγκεκριμένη ημέρα"""
-        appointments = models.Appointment.get_by_date(date)
+        appointments = models_revised.Appointment.get_by_date(date)
 
         if not appointments:
             return 0, "Δεν υπάρχουν ραντεβού για αυτή την ημερομηνία"
@@ -118,8 +118,8 @@ class EmailSender:
             success, message = self.send_reminder(
                 appt.customer_email,
                 appt.customer_name,
-                appt.date_time,
-                appt.service or "Ραντεβού"
+                appt.datetime,
+                appt.services or "Ραντεβού"
             )
 
             if success:
