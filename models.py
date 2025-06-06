@@ -129,12 +129,9 @@ class Appointment:
 
 
     
-    def save_to_db(self, id=None):
-            
+    def save_to_db(self, id=None):        
 
-            if self.check_for_overlap():
-                raise ValueError("check_for_overlap ΕΡΡΟΡ")
-                #datetime_str = self.datetime.strftime("%Y-%m-%d %H:%M")
+
         # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
             try:
                 with sqlite3.connect('salon_appointments.db') as conn:
@@ -231,4 +228,3 @@ class Appointment:
 
 
 ## Σημειώσεις
-

@@ -2,5 +2,5 @@ __pycache__/
 *.db
 *.xlsx
 *.log
-/docs/availablefonts.py
+/docs
 /gui
