@@ -105,7 +105,7 @@ class Customer:
     @classmethod
     def get_name_by_id(self, customer_id):
         """
-        Retrieve a customers full name by their customer ID.
+        Retrieve a customer's full name by their customer ID.
         """
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
@@ -116,6 +116,26 @@ class Customer:
             if result:
                 return f"{result[0]} {result[1]}"
             return ""
+        except Exception as e:
+            print(f"Error retrieving customer by ID: {e}")
+            return None
+        
+    @classmethod
+    def get_customer_by_id(self, customer_id):
+        """
+        Retrieve a customer's full info by their customer ID.
+        """
+        try:
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute("SELECT first_name, last_name, phone, email, id FROM customers WHERE id = ?", (customer_id,))
+                result = c.fetchone()
+                if result:
+                        customer = Customer(first_name=result[0], last_name=result[1], phone=result[2], email=result[3], id=result[4])
+                        return customer
+                else:
+                    customer = None
+                    return customer
         except Exception as e:
             print(f"Error retrieving customer by ID: {e}")
             return None
@@ -160,40 +180,18 @@ class Appointment:
         except Exception as e:
             print(f"Error retrieving customer by ID: {e}")
             raise e
-        
+
     @staticmethod
-    def delete_from_db(phone):
-        #Συνδεση στο databse
-        conn = sqlite3.connect('salon_appointments.db')
-        c = conn.cursor()
+    def delete_from_db(appointment_id):
+        # Διαγράφει ραντεβού από τη βάση δεδομένων βάσει του ID
         try:
-            # Ευρεση του customer ID βάση αριθμού τηλεφώνου
-            c.execute('SELECT id FROM customers WHERE phone = ?', (phone,))
-            result = c.fetchone()
-            if result:
-                customer_id = result[0]
-                # Διαγραφή όλων των ραντεβού του πελάτη πρώτα
-                c.execute('DELETE FROM appointments WHERE customer_id = ?', (customer_id,))
-            # Διαγραφη του πελάτη
-            c.execute('DELETE FROM customers WHERE phone = ?', (phone,))
-            conn.commit()
+            with sqlite3.connect('salon_appointments.db') as conn:
+                c = conn.cursor()
+                c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
+                return c.rowcount > 0  # True αν διαγράφηκε έστω 1 γραμμή
         except sqlite3.Error as e:
-            print(f"Error deleting customer and appointments: {e}")
-        finally:
-            conn.close()
-
-
-    # @staticmethod
-    # def delete_from_db(appointment_id):
-    #     # Διαγράφει ραντεβού από τη βάση δεδομένων βάσει του ID
-    #     try:
-    #         with sqlite3.connect('salon_appointments.db') as conn:
-    #             c = conn.cursor()
-    #             c.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
-    #             return c.rowcount > 0  # True αν διαγράφηκε έστω 1 γραμμή
-    #     except sqlite3.Error as e:
-    #         print(f"Σφάλμα διαγραφής ραντεβού στη βάση: {e}")
-    #         return False
+            print(f"Σφάλμα διαγραφής ραντεβού στη βάση: {e}")
+            return False
         
         
     @staticmethod

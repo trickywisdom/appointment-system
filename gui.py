@@ -12,12 +12,33 @@ from datetime import datetime, timedelta #, date
 from PIL import Image, ImageTk
 from tktooltip import ToolTip
 import sv_ttk
-import locale
 from emails_utils import EmailSender
 import export_excel
-# Ορισμός ελληνικών για το strftime
-locale.setlocale(locale.LC_TIME, "el_GR.UTF-8")  # Linux/macOS
-locale.setlocale(locale.LC_TIME, "Greek_Greece.1253")  # Windows alternative
+import locale
+import platform
+
+def set_greek_locale():
+# Ορισμός ελληνικών
+    system = platform.system().lower()
+    
+    if system == 'windows':
+        locales_to_try = ['greek', 'Greek_Greece.1253', 'el_GR']
+    else:  # linux/macOS
+        locales_to_try = ['el_GR.UTF-8', 'el_GR', 'greek']
+    
+    for loc in locales_to_try:
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            # print(f"Eπιτυχία! Tο locale είναι: {loc}")
+            return True
+        except locale.Error:
+            continue
+    
+    print("Προσοχή! Το Greek locale δεν είναι διαθέσιμο, θα χρησιμοποιηθεί το default...")
+    return False
+
+# Ορισμός locale
+set_greek_locale()
 
 models_revised.setup_database()
 
@@ -475,20 +496,20 @@ class CalendarView(tk.Frame):
                     frame.configure(height=17)
                     label2 = tk.Label(frame, text="", bg=self.bg_colors[color_index % len(self.bg_colors)], anchor="w", width=15, pady=5)
                     label2.pack(fill="both", expand=False)
-                    label2.bind("<Button-1>", lambda e, a=app, n=name: self.show_appointment_popup(a, n))
+                    label2.bind("<Button-1>", lambda e, a=app, n=name: self.controller.get_frame("DashboardPage").show_appointment_popup(a, n))
                 if slots_needed == 3:
                     frame = self.slots[dt, self.add_minutes(t, 20)]
                     frame.configure(height=17)
                     label2 = tk.Label(frame, text="", bg=self.bg_colors[color_index % len(self.bg_colors)], anchor="w", width=15, pady=5)
                     label2.pack(fill="both", expand=False)
-                    label2.bind("<Button-1>", lambda e, a=app, n=name: self.show_appointment_popup(a, n))
+                    label2.bind("<Button-1>", lambda e, a=app, n=name: self.controller.get_frame("DashboardPage").show_appointment_popup(a, n))
                     frame = self.slots[dt, self.add_minutes(t, 40)]
                     frame.configure(height=17)
                     label3 = tk.Label(frame, text="", bg=self.bg_colors[color_index % len(self.bg_colors)], anchor="w", width=15, pady=1)
                     label3.pack(fill="both", expand=False)
-                    label3.bind("<Button-1>", lambda e, a=app, n=name: self.show_appointment_popup(a, n))
+                    label3.bind("<Button-1>", lambda e, a=app, n=name: self.controller.get_frame("DashboardPage").show_appointment_popup(a, n))
             
-                label.bind("<Button-1>", lambda e, a=app, n=name: self.show_appointment_popup(a, n))
+                label.bind("<Button-1>", lambda e, a=app, n=name: self.controller.get_frame("DashboardPage").show_appointment_popup(a, n))
 
                 color_index += 1
             else:
@@ -551,27 +572,179 @@ class CalendarView(tk.Frame):
             messagebox.showerror("Error", f"Failed to fetch appointments: {e}")
             return []
 
-    def show_appointment_popup(self, appointment, customer_name):
-        popup = tk.Toplevel(self)
-        popup.title("Λεπτομέρειες Ραντεβού")
-        popup.geometry("300x250")
-        popup.configure(bg="white")
-        dt, t = appointment.datetime.split()
-        info = f"""
-                Ημερομηνία: {dt}
-                Ώρα: {t}
-                Πελάτης: {customer_name}
-                Υπηρεσία: {appointment.services}
-                Διάρκεια: {appointment.duration} λεπτά
-                Σημείωση: {appointment.notes or '-'}
-                """
-        tk.Label(popup, text=info.strip(), justify="left", bg="white", font=("Segoe UI", 10)).pack(padx=10, pady=10)
+    # def show_appointment_popup(self, appointment, customer_name):
+    #     # sv_ttk.set_theme("light")
+    #     popup = tk.Toplevel(self)
+    #     popup.title("Λεπτομέρειες Ραντεβού")
+    #     popup.geometry("600x400")
+    #     # popup.configure(bg="white")
+    #     popup.resizable(False, False)  # Απενεργοποίηση αλλαγής μεγέθους
+    #     popup.grab_set()  # Απαιτεί από τον χρήστη να αλληλεπιδράσει πρώτα με αυτό το παράθυρο
+    #     popup.focus_set()  # Δίνει keyboard focus
+    #     dt, t = appointment.datetime.split()
+    #     date_obj = datetime.strptime(dt, "%Y-%m-%d")
+    #     day = date_obj.strftime("%A")
+    #     date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
+    #     customer = Customer.get_customer_by_id(appointment.customer_id)
+    #     # ttk.Label(popup, text=f"{date_with_day_infront}").pack(padx=10, pady=10)
+    #     tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
+    #     tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
+    #     tk.Label(popup, text=f"Διάρκεια: {appointment.duration} λεπτά", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,0))
+    #     tk.Label(popup, text=f"Υπηρεσία: {appointment.services}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+    #     tk.Label(popup, text=f"{customer_name}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(5,0))
+    #     tk.Label(popup, text=f"Τηλέφωνο: {customer.phone}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=0)
+    #     tk.Label(popup, text=f"Email: {customer.email}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+    #     tk.Label(popup, text=f"Σημείωση: {appointment.notes or '-'}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(10,40))
 
-        btn_frame = tk.Frame(popup, bg="white")
-        btn_frame.pack(pady=10)
+    #     btn_frame = ttk.Frame(popup)
+    #     btn_frame.pack(pady=10)
 
-        tk.Button(btn_frame, text="Επεξεργασία", command=lambda a=appointment: self.controller.get_frame("NewAppointPage").edit_appoint(a.customer_id, customer_name, a.datetime, a.services, a.notes, a.id, popup), bg="#f0f0f0").pack(side="left", padx=5)
-        tk.Button(btn_frame, text="Διαγραφή", command=lambda: self.delete_appointment(popup, appointment.id)).pack(side="right", padx=5)
+    #     ttk.Button(btn_frame, text="Επεξεργασία", style='Accent.TButton', command=lambda a=appointment: self.controller.get_frame("NewAppointPage").edit_appoint(a.customer_id, customer_name, a.datetime, a.services, a.notes, a.id, popup)).pack(side="right", padx=5)
+    #     ttk.Button(btn_frame, text="Διαγραφή", command=lambda: self.delete_appointment(popup, appointment.id)).pack(side="left", padx=5)
+
+    #     # Κεντράρισμα popup
+    #     popup.update_idletasks()
+    #     width = popup.winfo_width()
+    #     height = popup.winfo_height()
+    #     x = (popup.winfo_screenwidth() // 2) - (width // 2)
+    #     y = (popup.winfo_screenheight() // 2) - (height // 2)
+    #     popup.geometry(f"{width}x{height}+{x}+{y}")
+        
+    #     self.current_popup = popup
+    #     # Bind το κλείσιμο του popup
+    #     popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+
+    # def on_popup_close(self, popup=None):
+    #      # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
+    #     open_popups = [
+    #         w for w in self.winfo_children() 
+    #         if isinstance(w, tk.Toplevel) and w.winfo_exists()
+    #     ]
+        
+    #     for popup in open_popups:
+    #         popup.destroy()
+    #     # popup.destroy()
+    #     self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
+    #     self.search_client.insert(0, "   Επώνυμο 🔍 Τηλέφωνο")
+    #     self.l1.place_forget()
+    #     self.close_btn.place_forget()
+    #     self.focus_set()
+
+    def edit_appoint(self, customer_id, name, datetime_str, services, notes, id, popup):
+        popup.destroy()
+        self.editing = True 
+        
+        self.current_customer_id = customer_id
+        self.search_var.set(name)
+        self.search_customer()
+        # Διαχωρισμός ημερομηνίας και ώρας
+        dt_str, time_str = datetime_str.split()
+        print("dt_str",dt_str)
+        yyyy, mm, dd = dt_str.split('-')
+        dt_str = f"{dd}-{mm}-{yyyy}"
+        # Μετατροπή string ημερομηνίας σε datetime αντικείμενο
+        try:
+            ### Τρόπος 2: Αν η μορφή είναι "YYYY-MM-DD" (ISO)
+            # date_obj = datetime.date(dt_str)
+            
+            # Ορισμός ημερομηνίας στο widget
+            self.appoint_date.set_date(dt_str)
+            # # Αν χρειάζεται να ορίσεις και ώρα (π.χ. σε TimeEntry widget)
+            # if hasattr(self, 'time_entry'):
+            #     hours, minutes = map(int, time_str.split(':'))
+            #     self.time_entry.set_time(f"{hours:02d}:{minutes:02d}")
+                
+        except Exception as e:
+            messagebox.showerror("Σφάλμα", f"Λάθος μορφή ημερομηνίας: {e}")
+        self.service_dropdown.set(services)
+        # self.duration_dropdown.set(duration)
+        self.notes.delete("1.0", tk.END)  # Καθαρισμός του πεδίου
+        self.notes.insert("1.7", notes)
+        self.current_appointment_id = id
+        self.get_time_options()
+        self.controller.show_frame("NewAppointPage")
+        self.l1.place_forget()
+    
+    # def edit_appointment_pop(self, customer_id, name, datetime_str, services, notes, id, popup):
+    #     popup.destroy()
+    #     # self.show_edit_appointment_popup(customer_id, name, datetime_str, services, notes, id)
+    #     self.controller.get_frame("NewAppointPage").show_edit_appointment_popup(customer_id, name, datetime_str, services, notes, id)
+
+    # def show_edit_appointment_popup(self, customer_id, name, datetime_str, services, notes, id):
+    #     popup = tk.Toplevel(self)
+    #     popup.title("Επεξεργασία ραντεβού")
+    #     popup.geometry("700x500")
+    #     popup.resizable(False, False)  # Απενεργοποίηση αλλαγής μεγέθους
+    #     popup.grab_set()  # Απαιτεί από τον χρήστη να αλληλεπιδράσει πρώτα με αυτό το παράθυρο
+    #     popup.focus_set()  # Δίνει keyboard focus
+        
+    #     # Φόρτωση της σελίδας NewAppointPage μέσα στο popup
+    #     new_client_frame = NewAppointPage(popup, self.controller) # , return_page="DashboardPage"
+    #     new_client_frame.pack(fill="both", expand=True)
+
+    #     new_client_frame.editing = True 
+        
+    #     new_client_frame.current_customer_id = customer_id
+    #     new_client_frame.search_var.set(name)
+    #     new_client_frame.search_customer()
+    #     # Διαχωρισμός ημερομηνίας και ώρας
+    #     dt_str, time_str = datetime_str.split()
+    #     print("dt_str",dt_str)
+    #     yyyy, mm, dd = dt_str.split('-')
+    #     dt_str = f"{dd}-{mm}-{yyyy}"
+    #     # Μετατροπή string ημερομηνίας σε datetime αντικείμενο
+    #     try:
+    #         ### Τρόπος 2: Αν η μορφή είναι "YYYY-MM-DD" (ISO)
+    #         # date_obj = datetime.date(dt_str)
+            
+    #         # Ορισμός ημερομηνίας στο widget
+    #         new_client_frame.appoint_date.set_date(dt_str)
+    #         # # Αν χρειάζεται να ορίσεις και ώρα (π.χ. σε TimeEntry widget)
+    #         # if hasattr(self, 'time_entry'):
+    #         #     hours, minutes = map(int, time_str.split(':'))
+    #         #     self.time_entry.set_time(f"{hours:02d}:{minutes:02d}")
+                
+    #     except Exception as e:
+    #         messagebox.showerror("Σφάλμα", f"Λάθος μορφή ημερομηνίας: {e}")
+    #     new_client_frame.service_dropdown.set(services)
+    #     # self.duration_dropdown.set(duration)
+    #     new_client_frame.notes.delete("1.0", tk.END)  # Καθαρισμός του πεδίου
+    #     new_client_frame.notes.insert("1.7", notes)
+    #     new_client_frame.current_appointment_id = id
+    #     new_client_frame.get_time_options()
+    #     new_client_frame.controller.show_frame("DashboardPage")
+    #     new_client_frame.l1.place_forget()
+        
+    #     # Κεντράρισμα popup
+    #     popup.update_idletasks()
+    #     width = popup.winfo_width()
+    #     height = popup.winfo_height()
+    #     x = (popup.winfo_screenwidth() // 2) - (width // 2)
+    #     y = (popup.winfo_screenheight() // 2) - (height // 2)
+    #     popup.geometry(f"{width}x{height}+{x}+{y}")
+
+    #     # new_client_frame.l1.place_forget()
+    #     # self.close_btn.place_forget()
+        
+    #     self.current_popup = popup
+    #     # Bind το κλείσιμο του popup
+    #     popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+
+    # def on_popup_close(self, popup=None):
+    #      # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
+    #     open_popups = [
+    #         w for w in self.winfo_children() 
+    #         if isinstance(w, tk.Toplevel) and w.winfo_exists()
+    #     ]
+        
+    #     for popup in open_popups:
+    #         popup.destroy()
+    #     # popup.destroy()
+    #     # self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
+    #     # self.search_client.insert(0, "   Επώνυμο 🔍 Τηλέφωνο")
+    #     # self.l1.place_forget()
+    #     # self.close_btn.place_forget()
+    #     self.focus_set()
 
     def delete_appointment(self, popup, appointment_id):
         # print(f"Προσπάθεια διαγραφής ραντεβού με ID: {appointment_id}")  # Debug
@@ -647,6 +820,7 @@ class DashboardPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
+        self.open_for_first_time = True
         
         
         # Left Side Menu
@@ -916,6 +1090,48 @@ class DashboardPage(tk.Frame):
         # Bind το κλείσιμο του popup
         popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
 
+    def show_appointment_popup(self, appointment, customer_name):
+        # sv_ttk.set_theme("light")
+        popup = tk.Toplevel(self)
+        popup.title("Λεπτομέρειες Ραντεβού")
+        popup.geometry("600x400")
+        # popup.configure(bg="white")
+        popup.resizable(False, False)  # Απενεργοποίηση αλλαγής μεγέθους
+        popup.grab_set()  # Απαιτεί από τον χρήστη να αλληλεπιδράσει πρώτα με αυτό το παράθυρο
+        popup.focus_set()  # Δίνει keyboard focus
+        dt, t = appointment.datetime.split()
+        date_obj = datetime.strptime(dt, "%Y-%m-%d")
+        day = date_obj.strftime("%A")
+        date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
+        customer = Customer.get_customer_by_id(appointment.customer_id)
+        # ttk.Label(popup, text=f"{date_with_day_infront}").pack(padx=10, pady=10)
+        tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
+        tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
+        tk.Label(popup, text=f"Διάρκεια: {appointment.duration} λεπτά", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,0))
+        tk.Label(popup, text=f"Υπηρεσία: {appointment.services}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+        tk.Label(popup, text=f"{customer_name}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(5,0))
+        tk.Label(popup, text=f"Τηλέφωνο: {customer.phone}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=0)
+        tk.Label(popup, text=f"Email: {customer.email}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+        tk.Label(popup, text=f"Σημείωση: {appointment.notes or '-'}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(10,40))
+
+        btn_frame = ttk.Frame(popup)
+        btn_frame.pack(pady=10)
+
+        ttk.Button(btn_frame, text="Επεξεργασία", style='Accent.TButton', command=lambda a=appointment: self.controller.get_frame("NewAppointPage").edit_appoint(a.customer_id, customer_name, a.datetime, a.services, a.notes, a.id, popup)).pack(side="right", padx=5)
+        ttk.Button(btn_frame, text="Διαγραφή", command=lambda: self.delete_appointment(popup, appointment.id)).pack(side="left", padx=5)
+
+        # Κεντράρισμα popup
+        popup.update_idletasks()
+        width = popup.winfo_width()
+        height = popup.winfo_height()
+        x = (popup.winfo_screenwidth() // 2) - (width // 2)
+        y = (popup.winfo_screenheight() // 2) - (height // 2)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+        
+        self.current_popup = popup
+        # Bind το κλείσιμο του popup
+        popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+
     def on_popup_close(self, popup=None):
          # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
         open_popups = [
@@ -926,7 +1142,8 @@ class DashboardPage(tk.Frame):
         for popup in open_popups:
             popup.destroy()
         # popup.destroy()
-        self.search_var.set("")  # Καθαρισμός αναζήτησης
+        self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
+        self.search_client.insert(0, "   Επώνυμο 🔍 Τηλέφωνο")
         self.l1.place_forget()
         self.close_btn.place_forget()
         self.focus_set()
@@ -1028,6 +1245,28 @@ class DashboardPage(tk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to fetch customers: {e}")
             return []
+        
+    def on_show(self):
+        """Επαναφέρει τα πεδία όταν ανοίγει η σελίδα."""
+        if self.open_for_first_time == True:
+            print("hello?")
+            pass
+        else:
+            print("hello??")
+            self.search_client.delete(0, tk.END)
+            self.search_client.insert(0, "   Επώνυμο 🔍 Τηλέφωνο")
+            # 1. Λήψη σημερινής ημερομηνίας
+            today = datetime.today().date()
+            # 2. Ορισμός επιλογής στο calendar
+            self.minical.selection_set(today)
+            selected_date = today  # Fallback σε σημερινή ημερομηνία
+            self.calendar_view.rebuild_calendar(selected_date)
+            self.l1.place_forget()
+            self.close_btn.place_forget()
+            self.focus_set()    
+        self.open_for_first_time = False
+        
+        print("hello???")
 
 
 class ClientsPage(tk.Frame):
@@ -1206,9 +1445,14 @@ class NewAppointPage(tk.Frame):
         self.controller = controller
         # sv_ttk.set_theme("light")
         self.editing = False
+        print("self.editing0", self.editing)
         self.selected_name = ""
+        self.selected_id = None
         self.current_customer_id = None
         self.current_appointment_id = None
+        # self.included_times = False # για την περίπτωση του edit: δεν θέλουμε να αφαιρούνται τα time_options που αφορούν το συγκεκριμένο ραντεβού
+        self.datetime_obj = None # για την περίπτωση του edit: δεν θέλουμε να αφαιρούνται τα time_options που αφορούν το συγκεκριμένο ραντεβού
+        self.onlyinit = True
 
         self.content = ttk.Frame(self, padding=(260,25), border=5, borderwidth=3)
         self.content.pack(expand=1, ipady=10, fill="both")
@@ -1244,8 +1488,12 @@ class NewAppointPage(tk.Frame):
             y=self.search_client.winfo_y() + self.search_client.winfo_height() + 20,
             height=220
         )
+        self.scrollbar.lift()
         # Πρέπει να γίνει update για να ξέρουμε τις συντεταγμένες του entry
         self.search_client.update_idletasks()
+
+        # self.search_client.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
+        # self.l1.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
 
         # self.l1 = tk.Listbox(self.content, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1)
         # if self.query:
@@ -1326,10 +1574,12 @@ class NewAppointPage(tk.Frame):
         ToolTip(self.time_dropdown, msg="- Επιλέξτε πρώτα Ημερομηνία και Υπηρεσία\nώστε να εμφανιστούν οι διαθέσιμες ώρες.", delay=0.5,
         parent_kwargs={"bg": "#FFFFFF", "padx": 0, "pady": 0},
         fg="#ffffff", bg="#505E66", padx=7, pady=7)
+        # Σημειώσεις
+        ttk.Label(self.content, text="Σημειώσεις:", anchor="w", width=20,).grid(row=4, column=0, sticky="nw", pady=(10,10))
+        self.notes = tk.Text(self.content, height=3, width=15, bg="#fdfdfd", highlightbackground="white", padx=8, pady=8, wrap=tk.WORD)
+
+        self.notes.grid(row=5, column=0, columnspan=2, padx=0, ipady=35, ipadx=100, sticky="nw")
         
-        ttk.Label(self.content, text="Σημειώσεις:", anchor="w", width=20,).grid(row=4, column=0, sticky="w", pady=(10,10))
-        self.notes = tk.Entry(self.content, bg="#fdfdfd", highlightbackground="white")
-        self.notes.grid(row=5, column=0, columnspan=2, padx=0, ipady=35, ipadx=108, sticky="nw")
 
         # self.l1 = tk.Listbox(self.content, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
         
@@ -1339,7 +1589,8 @@ class NewAppointPage(tk.Frame):
         #                 width=180, height=220)
         # self.l1.lift()
         
-        # self.l1.place_forget()
+        self.l1.place_forget()
+        self.scrollbar.place_forget()
         # Κάθε φορά που αλλάζει η Ημερομηνία ή η Υπηρεσία, ξαναϋπολόγισε τις διαθέσιμες ώρες
         self.appoint_date.bind("<<DateEntrySelected>>", self.get_time_options)
         self.service_dropdown.bind("<<ComboboxSelected>>", self.get_time_options)
@@ -1357,7 +1608,7 @@ class NewAppointPage(tk.Frame):
         all_time_options = [f"{h:02d}:{m:02d}" for h in range(10, 20) for m in range(0, 60, 20)]
 
         unavailable = set()
-
+        print("0get_time_options")
         if self.appoint_date.get():
             
             date_str = self.appoint_date.get()
@@ -1368,31 +1619,40 @@ class NewAppointPage(tk.Frame):
                 if datetime.today().date() != date_obj:
                     messagebox.showerror("Μη διαθέσιμη ημέρα", f"Το κομμωτήριο είναι κλειστό Κυριακές και Δευτέρες.\nΠαρακαλώ επιλέξτε άλλη ημέρα.")
                 self.appoint_date.delete(0, 'end') 
-            
-            
+            print("1get_time_options")   
+
 
 
             appointments_of_day = Appointment.get_by_date(date_iso)
             
             for app in appointments_of_day:
                 dt_obj = datetime.strptime(app.datetime, "%Y-%m-%d %H:%M")
+                if dt_obj == self.datetime_obj: # για την περίπτωση edit. Οι χρόνοι (ημερομηνία και ώρα) του επίμαχου ραντεβού, να μην συμπεριληφθούν στο unavailable, δηλαδή στις επικαλυπτόμενες ώρες
+                    continue
                 hour, minute = dt_obj.hour, dt_obj.minute
                 duration = service_durations.get(app.services, 20)
 
                 for offset in range(0, duration, 20):
                     total_minutes = hour * 60 + minute + offset
                     h, m = divmod(total_minutes, 60)
+                    # if not self.included_times:
                     unavailable.add(f"{h:02d}:{m:02d}")
+                    # else:
+                    #     continue
+                    print("1.5get_time_options")   
 
         # Αν υπάρχει επιλεγμένη υπηρεσία, φιλτράρουμε σύμφωνα με διάρκεια
         selected_service = self.service_dropdown.get()
         duration = service_durations.get(selected_service, 20)
-
+        print("2get_time_options")
         # Αν δεν είναι επιλεγμένα και τα δύο, τότε απενεργοποίησε time_dropdown και σταμάτα
         if not date_str or not selected_service:
             self.time_dropdown['state'] = 'disabled'
-            self.time_dropdown.set('')  # Καθάρισε την προηγούμενη επιλογή αν υπάρχει
+            # if not self.time_dropdown.get() in time_options: # Κράτα την ώρα αν υπάρχει
+            #             self.time_dropdown.set('')  
+            self.time_dropdown.set('')
             return
+            
 
         time_options = []
         for time_str in all_time_options:
@@ -1423,19 +1683,35 @@ class NewAppointPage(tk.Frame):
             self.time_dropdown['state'] = 'disabled'
 
         self.time_dropdown['values'] = time_options
-
+        print("3get_time_options")
         # if self.time_dropdown.get() not in time_options:
         #     messagebox.showerror("Μισό λεπτό!", f"Δεν υπάρχει διαθεσιμότητα για\n{self.time_dropdown.get()}\nΕπιλέξτε διαφορετική ώρα")
-        self.time_dropdown.set("")    
+        # if not self.included_times:
+        #                 self.time_dropdown.set("") 
+        if not self.time_dropdown.get() in time_options: # Κράτα την ώρα αν υπάρχει
+                        self.time_dropdown.set('') 
 
         print("Τελικές διαθέσιμες επιλογές ώρας:", time_options)
 
-    def hide_listbox_if_needed(self):
+    def hide_listbox_if_needed(self, event=None):
+        # Έλεγχος αν το ποντίκι είναι πάνω από το listbox ή το entry
+        mouse_over_listbox = (self.l1.winfo_containing(event.x_root, event.y_root) if event else False)
+        mouse_over_entry = (self.search_client.winfo_containing(event.x_root, event.y_root) if event else False)
         # Αν δεν έχει focus ούτε το Entry ούτε το Listbox, απόκρυψε
-        if not self.search_client.focus_get() in [self.search_client, self.l1]:
-            self.l1.place_forget()   
+        if not (self.search_client.focus_get() in [self.search_client, self.l1] or 
+                mouse_over_listbox or 
+                mouse_over_entry):
+            self.l1.place_forget()
+            self.scrollbar.place_forget() 
+            # self.close_btn.place_forget()
+
+        # # Αν δεν έχει focus ούτε το Entry ούτε το Listbox, απόκρυψε
+        # if not self.search_client.focus_get() in [self.search_client, self.l1]:
+        #     self.l1.place_forget()
+        #     self.scrollbar.place_forget()   
 
     def search_customer(self, *args):
+        print("0search_customer")
         customer_list = self.show_all_customers()
         self.query = self.search_var.get().strip().lower()
 
@@ -1449,6 +1725,19 @@ class NewAppointPage(tk.Frame):
             if self.query in customer[1].lower() or self.query in customer[2]
         ]
 
+        # # Καθαρισμός αν δεν υπάρχει ακριβές ταίριασμα σε κάποιον πελάτη
+        # match_found = any(
+        #     self.query == customer[1].lower() or self.query == customer[2]
+        #     for customer in filtered_customers
+        # )
+        # if not match_found:
+        #     self.selected_name = ""
+        #     self.selected_id = None
+        #     self.current_customer_id = None
+        #     self.current_appointment_id = None
+        #     print("Καθαρισμός επιλογής πελάτη")
+        #     # return
+
         def my_upd(my_widget):
             my_w = my_widget.widget
             # print("my_w", my_w.get(0, "end"))
@@ -1457,21 +1746,46 @@ class NewAppointPage(tk.Frame):
             # print("index", index)
             # print("customer", customer)
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
-            # print("self.selected_id", self.selected_id)
+            print("self.selected_id", self.selected_id)
             value = my_w.get(index).strip()
             self.selected_name = value
-            # print("value", value)
+            print("value", value)
             self.search_var.set(value)
+            print("1search_customer")
             self.l1.place_forget()
+            self.scrollbar.place_forget()
             self.focus_set()
         # Ταξινόμηση
         # filtered_customers.sort(key=lambda x: (x[1] == "", x[1]))
 
         self.l1.delete(0, 'end')
-        for customer in filtered_customers:
-            full_name = f"{customer[0]} {customer[1]}"
-            self.l1.insert(tk.END,f" {full_name}")
-        self.l1.bind("<<ListboxSelect>>", my_upd)
+        # if not filtered_customers and self.query:  # Αν δεν βρέθηκαν αποτελέσματα
+        if not filtered_customers and len(self.query) >= 2:  # Μόνο αν έχει πληκτρολογήσει τουλάχιστον 2 χαρακτήρες
+            # self.l1.place_forget()
+            # self.l1.configure(height=1)  # 1 γραμμή ύψος
+            # self.l1.place(
+            #                 relx=0.01,
+            #                 rely=0.53,
+            #                 width=200,
+            #                 height=30  # Μικρότερο ύψος
+            #             )
+            self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
+            # # Αύξηση ύψους του Listbox
+            # self.l1.configure(height=2)  # Θα δείχνει 2 γραμμές ταυτόχρονα
+            # # Εισαγωγή σε 2 ξεχωριστές γραμμές
+            # self.l1.insert(tk.END, " Δε βρέθηκε ο πελάτης.")
+            # self.l1.insert(tk.END, " Κάντε κλικ για δημιουργία.")
+            # self.l1.itemconfig(0, {'fg': 'blue'})
+            # self.l1.itemconfig(1, {'fg': 'blue'})
+            self.l1.itemconfig(0, {'fg': 'blue', 'selectbackground': "#fafafa", 'selectforeground': "#4CAF50"})
+            self.l1.bind("<<ListboxSelect>>", self.create_new_client)
+            self.l1.bind("<Enter>", lambda e: self.l1.config(cursor="hand2") if "Δε βρέθηκε" in self.l1.get(0) else None)
+            self.l1.bind("<Leave>", lambda e: self.l1.config(cursor=""))
+        else:
+            for customer in filtered_customers:
+                full_name = f"{customer[0]} {customer[1]}"
+                self.l1.insert(tk.END,f" {full_name}")
+            self.l1.bind("<<ListboxSelect>>", my_upd)
 
         #Configure the listitems
         for row_index in range(len(filtered_customers)):
@@ -1534,6 +1848,13 @@ class NewAppointPage(tk.Frame):
                         y=self.search_client.winfo_y() + self.search_client.winfo_height() - 60,
                         # relx=1, rely=1,
                         width=215, height=241)
+        # self.close_btn.place(
+        #                 # x=self.search_client.winfo_x() + 80, 
+        #                 # y=self.search_client.winfo_y() + self.search_client.winfo_height() + 60,
+        #                 relx=0.22, rely=0.485,)
+        self.l1.lift()
+        # self.scrollbar.lift()
+        # self.close_btn.lift()
 
     # def reset_fields(self):
     #     """Καθαρίζει τα πεδία για νέο ραντεβού."""
@@ -1546,7 +1867,56 @@ class NewAppointPage(tk.Frame):
     #     self.notes.delete(0, tk.END)
     #     self.appoint_date.set_date(date.today())
 
-    
+    def create_new_client(self, event):
+        # Έλεγχος αν επιλέχθηκε το self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
+        widget = event.widget
+        selection = widget.curselection()
+        if selection and widget.get(selection[0]) == " Δε βρέθηκε. Δημιουργία πελάτη.":
+            self.show_new_client_popup()
+        self.focus_set()
+
+    def show_new_client_popup(self):
+        popup = tk.Toplevel(self)
+        popup.title("Νέος Πελάτης")
+        popup.geometry("600x400")
+        popup.resizable(False, False)  # Απενεργοποίηση αλλαγής μεγέθους
+        
+        # Φόρτωση της σελίδας NewClientPage(2?) μέσα στο popup
+        new_client_frame = NewClientPage(popup, self.controller, return_page="DashboardPage")
+        new_client_frame.pack(fill="both", expand=True)
+        
+        # Κεντράρισμα popup
+        popup.update_idletasks()
+        width = popup.winfo_width()
+        height = popup.winfo_height()
+        x = (popup.winfo_screenwidth() // 2) - (width // 2)
+        y = (popup.winfo_screenheight() // 2) - (height // 2)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+
+        self.l1.place_forget()
+        self.scrollbar.place_forget()
+        # self.close_btn.place_forget()
+        
+        self.current_popup = popup
+        # Bind το κλείσιμο του popup
+        popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+
+    def on_popup_close(self, popup=None):
+         # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
+        open_popups = [
+            w for w in self.winfo_children() 
+            if isinstance(w, tk.Toplevel) and w.winfo_exists()
+        ]
+        
+        for popup in open_popups:
+            popup.destroy()
+        # popup.destroy()
+        self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
+        self.search_client.insert(0, "Επώνυμο 🔍 Τηλέφωνο")
+        self.l1.place_forget()
+        self.scrollbar.place_forget()
+        # self.close_btn.place_forget()
+        self.focus_set()
 
     def save_appoint(self):
         # print(self.selected_name.get())
@@ -1559,13 +1929,19 @@ class NewAppointPage(tk.Frame):
             selected_name = self.selected_name
         else: 
             selected_name = self.search_var.get().strip()
+        print("selected_name",selected_name)
         if self.current_customer_id:
             selected_id = self.current_customer_id
         else:
             try:
                 selected_id = self.selected_id
             except:
-                messagebox.showerror("Σφάλμα", "Διαλέξτε πελάτη για το ραντεβού")
+                messagebox.showerror("Σφάλμα", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
+                return
+        if (selected_name.strip() != self.search_var.get().strip()):
+            messagebox.showerror("Σφάλμα!", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
+            return
+        print("selected_id",selected_id)
         appoint_date = self.appoint_date.get()
         # Το μετατρέπεις σε datetime object
         date_obj = datetime.strptime(appoint_date, "%d-%m-%Y") # μετατροπή σε datetime object
@@ -1583,7 +1959,7 @@ class NewAppointPage(tk.Frame):
             duration = 20
         else:
             messagebox.showerror("Σφάλμα", "Πρόβλημα με τη Διάρκεια του ραντεβού. Ξαναδιαλέξτε Είδος Υπηρεσίας.")
-        notes = self.notes.get()
+        notes = self.notes.get("1.0", tk.END).strip()
         if self.current_appointment_id:
             id = self.current_appointment_id
         else:
@@ -1594,6 +1970,7 @@ class NewAppointPage(tk.Frame):
         # Validate input fields
 
         selected_name = self.search_var.get().strip()
+        print("selected_name9",selected_name)
 
         if not selected_name or not appoint_date or not time_dropdown or not service_dropdown or not duration:
             messagebox.showerror("Σφάλμα", "Όλα τα πεδία (Πελάτης, Ημερομηνία, Είδος Υπηρεσίας και Ώρα) πρέπει να συμπληρωθούν")
@@ -1611,10 +1988,15 @@ class NewAppointPage(tk.Frame):
             # Create and save the appointment
             datetime_str = f"{appoint_date} {time_dropdown}"
             # print("datetime_str", datetime_str)
-            appointment = Appointment(selected_id, datetime_str, service_dropdown, duration, notes)
+            try:
+                appointment = Appointment(selected_id, datetime_str, service_dropdown, duration, notes)
             # print("2", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
-            appointment.save_to_db(id) # IF ALREADY EXISTS WE SHOULD UPDATE
+                appointment.save_to_db(id) # IF ALREADY EXISTS WE SHOULD UPDATE
             # print("3", selected_id, appoint_date, time_dropdown, service_dropdown, duration_dropdown, notes)
+            except Exception as e:
+                messagebox.showerror("Σφάλμα", "Όλα τα πεδία πρέπει να συμπληρωθούν σωστά")
+                print("Παρουσιάστηκε σφάλμα", f"{e}")
+                return
             messagebox.showinfo("Επιτυχία", f"Αποθηκεύτηκε το ραντεβού για {selected_name}")
 
             # # Clear input fields
@@ -1626,41 +2008,160 @@ class NewAppointPage(tk.Frame):
             self.controller.show_frame("DashboardPage")
             # dashboard = self.controller.get_frame("DashboardPage")
             # dashboard.calendar_view.rebuild_calendar(appoint_date)  # Προσπέλαση μέσω της γονικής σελίδας
+            # self.datetime_obj = None # πιθανόν όχι απαραίτητο γιατί το έβαλα στο on_show
         except Exception as e:
             print("Παρουσιάστηκε σφάλμα", f"Αποτυχία στην αποθήκευση του ραντεβού: {e}")
+        
+        self.editing = False
 
-    def edit_appoint(self, customer_id, name, datetime, services, notes, id, popup):
-        popup.destroy()
-        self.editing = True
+    def show_edit_appointment_popup(self, customer_id, name, datetime_str, services, notes, id):
+        popup = tk.Toplevel(self)
+        popup.title("Επεξεργασία ραντεβού")
+        popup.geometry("800x550")
+        popup.resizable(False, False)  # Απενεργοποίηση αλλαγής μεγέθους
+        popup.grab_set()  # Απαιτεί από τον χρήστη να αλληλεπιδράσει πρώτα με αυτό το παράθυρο
+        popup.focus_set()  # Δίνει keyboard focus
+        
+        # Φόρτωση της σελίδας NewAppointPage μέσα στο popup
+        new_client_frame = NewAppointPage(popup, self.controller) # , return_page="DashboardPage"
+        new_client_frame.pack(side="left", expand=False, fill="none")
 
-        dt, t = datetime.split()
+        self.editing = True 
+        
         self.current_customer_id = customer_id
         self.search_var.set(name)
         self.search_customer()
-        day, month, year = map(int, dt.split('-'))
-        self.appoint_date.set_date(datetime.date()(day, month, year))
-        self.time_dropdown.set(t)
+        # Διαχωρισμός ημερομηνίας και ώρας
+        dt_str, time_str = datetime_str.split()
+        print("dt_str",dt_str)
+        yyyy, mm, dd = dt_str.split('-')
+        dt_str = f"{dd}-{mm}-{yyyy}"
+        # Μετατροπή string ημερομηνίας σε datetime αντικείμενο
+        try:
+            ### Τρόπος 2: Αν η μορφή είναι "YYYY-MM-DD" (ISO)
+            # date_obj = datetime.date(dt_str)
+            
+            # Ορισμός ημερομηνίας στο widget
+            self.appoint_date.set_date(dt_str)
+            # # Αν χρειάζεται να ορίσεις και ώρα (π.χ. σε TimeEntry widget)
+            # if hasattr(self, 'time_entry'):
+            #     hours, minutes = map(int, time_str.split(':'))
+            #     self.time_entry.set_time(f"{hours:02d}:{minutes:02d}")
+                
+        except Exception as e:
+            messagebox.showerror("Σφάλμα", f"Λάθος μορφή ημερομηνίας: {e}")
         self.service_dropdown.set(services)
         # self.duration_dropdown.set(duration)
-        self.notes.delete(0, tk.END)  # Καθαρισμός του πεδίου
-        self.notes.insert(0, notes)
+        self.notes.delete("1.0", tk.END)  # Καθαρισμός του πεδίου
+        self.notes.insert("1.7", notes)
         self.current_appointment_id = id
         self.get_time_options()
+        self.controller.show_frame("DashboardPage")
+        self.l1.place_forget()
+        self.scrollbar.place_forget()
+        
+        # Κεντράρισμα popup
+        popup.update_idletasks()
+        width = popup.winfo_width()
+        height = popup.winfo_height()
+        x = (popup.winfo_screenwidth() // 2) - (width // 2)
+        y = (popup.winfo_screenheight() // 2) - (height // 2)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+
+        # new_client_frame.l1.place_forget()
+        # self.close_btn.place_forget()
+        
+        self.current_popup = popup
+        # Bind το κλείσιμο του popup
+        popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+
+    def on_popup_close(self, popup=None):
+         # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
+        open_popups = [
+            w for w in self.winfo_children() 
+            if isinstance(w, tk.Toplevel) and w.winfo_exists()
+        ]
+        
+        for popup in open_popups:
+            popup.destroy()
+        # popup.destroy()
+        # self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
+        # self.search_client.insert(0, "   Επώνυμο 🔍 Τηλέφωνο")
+        # self.l1.place_forget()
+        # self.close_btn.place_forget()
+        self.focus_set()
+
+    def edit_appoint(self, customer_id, name, datetime_str, services, notes, id, popup):
+        popup.destroy()
+        self.editing = True 
+        print("Διαθέσιμες ώρες edit0:", self.time_dropdown["values"])  # Debug
+        self.current_customer_id = customer_id
+        self.search_var.set(name)
+        self.search_customer()
+        # Διαχωρισμός ημερομηνίας και ώρας
+        dt_str, time_str = datetime_str.split()
+        print("dt_str",dt_str)
+        yyyy, mm, dd = dt_str.split('-')
+        dt_str = f"{dd}-{mm}-{yyyy}"
+        # Μετατροπή string ημερομηνίας σε datetime αντικείμενο
+        try:
+            ### Τρόπος 2: Αν η μορφή είναι "YYYY-MM-DD" (ISO)
+            # date_obj = datetime.date(dt_str)
+            
+            # Ορισμός ημερομηνίας στο widget
+            self.appoint_date.set_date(dt_str)
+            # Αν χρειάζεται να ορίσεις και ώρα (π.χ. σε TimeEntry widget)
+            print("Διαθέσιμες ώρες edit1:", self.time_dropdown["values"])  # Debug
+            # if hasattr(self, 'time_dropdown'):
+            #     hours, minutes = map(int, time_str.split(':'))
+            #     # self.time_entry.set_time(f"{hours:02d}:{minutes:02d}")
+            #     # self.time_dropdown.set(f"{hours:02d}:{minutes:02d}")
+            #     print("self.time_dropdown.set", hours, minutes)
+                
+        except Exception as e:
+            messagebox.showerror("Σφάλμα", f"Λάθος μορφή ημερομηνίας: {e}")
+        self.service_dropdown.set(services)
+        
+        # self.duration_dropdown.set(duration)
+        self.notes.delete("1.0", tk.END)  # Καθαρισμός του πεδίου
+        self.notes.insert("1.7", notes)
+        self.current_appointment_id = id
+        
+        # self.included_times = True
+        self.datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M") # Θέλουμε το χρονικό διάστημα του ραντεβού μας, να περιλαμβάνεται στα time_options
+        self.get_time_options()
+        if hasattr(self, 'time_dropdown'): # πρέπει να μπει μετά το self.get_time_options() γιατί εκεί υπάρχει self.time_dropdown.set("")
+                hours, minutes = map(int, time_str.split(':'))
+                self.time_dropdown.set(f"{hours:02d}:{minutes:02d}")
         self.controller.show_frame("NewAppointPage")
         self.l1.place_forget()
+        self.scrollbar.place_forget()
+        # self.included_times = False
+
+        # self.current_popup = popup
+        # # Bind το κλείσιμο του popup
+        # popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+        print("Διαθέσιμες ώρες edit2:", self.time_dropdown["values"])  # Debug
         
     def create_new_appointment(self, date, time):
         
         self.editing = True
+        # self.included_times = True
         # day, month, year = map(int, date.split('-'))
         self.appoint_date.set_date(date)
         self.time_dropdown.set(time)
+        self.selected_name = ""
+        self.selected_id = None
+        self.current_customer_id = None
+        self.current_appointment_id = None
         self.search_var.set("Επώνυμο 🔍 Τηλέφωνο")
         self.service_dropdown.set("")
-        self.notes.delete(0, tk.END)  # Καθαρίζει το πεδίο σημειώσεων
+        self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
+        self.time_dropdown['state'] = 'disabled'
         self.controller.show_frame("NewAppointPage")
         self.focus_set()
         self.l1.place_forget()
+        self.scrollbar.place_forget()
 
 
     def show_all_customers(self):
@@ -1680,19 +2181,29 @@ class NewAppointPage(tk.Frame):
     def on_show(self):
         """Καθαρίζει τα πεδία όταν ανοίγει η σελίδα."""
         # from datetime import date
-        if not self.editing:
+        print("self.editing9", self.editing)
+        if not self.editing and not self.onlyinit:
+            print("self.editing90", self.editing)
+            self.selected_name = ""
+            self.selected_id = None
+            self.current_customer_id = None
+            self.current_appointment_id = None
             self.search_var.set("Επώνυμο 🔍 Τηλέφωνο")
             self.appoint_date.set_date(datetime.today().date())  # Επαναφέρει τη σημερινή ημερομηνία
             self.time_dropdown.set("")  # Καθαρίζει την ώρα
             self.service_dropdown.set("")  # Καθαρίζει την υπηρεσία
             # self.duration_dropdown.set("")  # Καθαρίζει τη διάρκεια
-            self.notes.delete(0, tk.END)  # Καθαρίζει το πεδίο σημειώσεων
-
+            self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
+            self.get_time_options()
+            self.datetime_obj = None
             self.focus_set()  # Αφαιρεί focus από όποιο widget είχε focus
             
             # self.load_clients()
             self.l1.place_forget()  
+            self.scrollbar.place_forget()
         self.editing = False
+        self.onlyinit = False
+        print("self.editing99", self.editing)
         # print("hello???")
    
         
@@ -1741,16 +2252,32 @@ class NewClientPage(tk.Frame):
     #         self.controller.show_frame("ClientsPage")
 
     def cancel_action(self):
-        # if self.is_popup and isinstance(self.parent_window, tk.Toplevel):
-        #     self.parent_window.destroy()
-        #     # Επιστροφή focus στην προηγούμενη σελίδα
-        #     if self.return_page:
-        #         self.controller.get_frame(self.return_page).focus_set()
-        # elif self.return_page:
-        #     self.controller.show_frame(self.return_page)
+        # has_popup = any(
+        #                     isinstance(w, tk.Toplevel) and w.winfo_viewable()
+        #                     for w in self.controller.winfo_toplevel().winfo_children()
+        #                 )
+    
+        # if has_popup:
+        #     # Μένουμε στη DashboardPage και κλείνουμε το popup, αν υπάρχει
+        #     print("Πηγαίνω στην Αρχική")
+        #     self.controller.get_frame("DashboardPage").on_popup_close()
         # else:
-            self.controller.get_frame("DashboardPage").on_popup_close()
-            self.controller.show_frame("ClientsPage")  # Προεπιλογή
+        #     # Δεν υπάρχει popup, πήγαινε στους πελάτες
+        #     print("Πηγαίνω στους Πελάτες")
+        #     self.controller.show_frame("ClientsPage")
+        current = self.controller.current_frame
+        if current == self.controller.get_frame("DashboardPage"):
+            has_popup = any(isinstance(w, tk.Toplevel) for w in self.controller.winfo_toplevel().winfo_children())
+            if has_popup:
+                self.controller.get_frame("DashboardPage").on_popup_close()
+                return  # Μένεις στη Dashboard
+        if current == self.controller.get_frame("NewAppointPage"):
+            has_popup = any(isinstance(w, tk.Toplevel) for w in self.controller.winfo_toplevel().winfo_children())
+            if has_popup:
+                self.controller.get_frame("NewAppointPage").on_popup_close()
+                return  # Μένεις στη Dashboard
+        # Σε οποιαδήποτε άλλη περίπτωση ή αν δεν έχει popup:
+        self.controller.show_frame("ClientsPage")
 
     def reset_fields(self):
         """Καθαρίζει τα πεδία για νέο πελάτη."""
@@ -2134,7 +2661,7 @@ class RemindersPage(tk.Frame):
             widget.destroy()
 
         appoints_by_date = self.get_appointments_by_date()
-        print("appoints_by_date", appoints_by_date)
+        # print("appoints_by_date", appoints_by_date)
         if appoints_by_date:     
             if ((len(appoints_by_date)-10) < 10):
                 for i in range((12-len(appoints_by_date))):
@@ -2237,7 +2764,7 @@ class RemindersPage(tk.Frame):
         
         try:
             appointments = [(a.customer_id, a.datetime, a.services, a.duration, a.notes, a.id) for a in Appointment.get_by_date(date_str)]
-            print("appointments by date", date, appointments)
+            # print("appointments by date", date, appointments)
 
             return appointments
         except Exception as e:

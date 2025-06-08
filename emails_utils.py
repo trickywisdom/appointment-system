@@ -24,14 +24,15 @@ class EmailSender:
         try:
             # Δημιουργία μηνύματος
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = 'Υπενθύμιση Ραντεβού - Κομμώσεις για όλα τα γούστα'
+            msg['Subject'] = 'Υπενθύμιση Ραντεβού - Ο Ψαλιδοχέρης'
             msg['From'] = self.email
             msg['To'] = recipient_email
 
             # Μορφοποίηση ώρας
-            time_str = appointment_time#.strftime('%H:%M')
-            date_str = appointment_time#.strftime('%d/%m/%Y')
-            day_name = appointment_time#.strftime('%A')
+            appointment_datetime_obj = datetime.strptime(appointment_time, "%Y-%m-%d %H:%M")
+            time_str = appointment_datetime_obj.strftime('%H:%M')
+            date_str = appointment_datetime_obj.strftime('%d/%m/%Y')
+            day_name = appointment_datetime_obj.strftime('%A')
 
             # HTML περιεχόμενο
             html = f"""
