@@ -4,8 +4,8 @@ import re # regurar expressions
 import tkinter as tk
 from tkinter import messagebox, ttk
 # from tkinter import font as tkFont
-import models_revised
-from models_revised import Customer, Appointment
+import models
+from models import Customer, Appointment
 from tkcalendar import DateEntry
 from tkcalendar import Calendar
 from datetime import datetime, timedelta #, date
@@ -40,7 +40,7 @@ def set_greek_locale():
 # Ορισμός locale
 set_greek_locale()
 
-models_revised.setup_database()
+models.setup_database()
 
 class MainApp(tk.Tk):
     def __init__(self):
