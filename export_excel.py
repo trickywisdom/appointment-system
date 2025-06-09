@@ -1,7 +1,7 @@
 # Εξαγωγή ραντεβού σε Excel
 import xlsxwriter
 from datetime import datetime
-import models_revised
+import models
 import os
 
 def export_appointments_to_excel(date_str, filename=None):
@@ -21,7 +21,7 @@ def export_appointments_to_excel(date_str, filename=None):
             filename = f'ραντεβού_{date_obj.strftime("%Y-%m-%d")}.xlsx'
         
         # Λήψη ραντεβού από τη βάση
-        appointments = models_revised.Appointment.get_by_date(date_obj)
+        appointments = models.Appointment.get_by_date(date_obj)
         print("Βρέθηκαν ραντεβού:", appointments)
         
     except Exception as e:
@@ -143,7 +143,7 @@ def export_customer_appointments(customer_id, filename=None):
     
     # Λήψη στοιχείων πελάτη
     customer = None
-    for c in models_revised.Customer.get_all():
+    for c in models.Customer.get_all():
         if c.id == customer_id:
             customer = c
             break
@@ -156,7 +156,7 @@ def export_customer_appointments(customer_id, filename=None):
         filename = f'ραντεβού_{customer.last_name}_{customer.first_name}.xlsx'
     
     # Λήψη ραντεβού
-    appointments = models_revised.Appointment.get_by_customer(customer_id)
+    appointments = models.Appointment.get_by_customer(customer_id)
     
     # Δημιουργία Excel
     workbook = xlsxwriter.Workbook(filename)

@@ -4,7 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-import models_revised
+import models
 
 
 class EmailSender:
@@ -60,7 +60,7 @@ class EmailSender:
 
                   <p style="color: #666; font-size: 14px;">
                     Με εκτίμηση,<br>
-                    <strong>Κομμώσεις για όλα τα γούστα</strong><br>
+                    <strong>Hairway to heaven</strong><br>
                     Τηλέφωνο: 210-1234567<br>
                     Διεύθυνση: Οδός Κομμώσεων 123, Αθήνα
                   </p>
@@ -84,7 +84,7 @@ class EmailSender:
             Παρακαλούμε να είστε στο κατάστημά μας 5 λεπτά πριν την προγραμματισμένη ώρα.
 
             Με εκτίμηση,
-            Κομμώσεις για όλα τα γούστα
+            Hairway to heaven
             """
 
             # Προσθήκη των δύο εκδοχών
@@ -106,7 +106,7 @@ class EmailSender:
 
     def send_reminders_for_date(self, date):
         """Στέλνει υπενθυμίσεις σε όλους τους πελάτες που έχουν ραντεβού την συγκεκριμένη ημέρα"""
-        appointments = models_revised.Appointment.get_by_date(date)
+        appointments = models.Appointment.get_by_date(date)
 
         if not appointments:
             return 0, "Δεν υπάρχουν ραντεβού για αυτή την ημερομηνία"

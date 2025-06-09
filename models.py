@@ -1,7 +1,6 @@
 # Classes
 import sqlite3
-from datetime import datetime, timedelta
-# import re # regurar expressions
+# from datetime import datetime, timedelta
 
 # Συνάρτηση ρύθμισης της βάσης δεδομένων 
 def setup_database():
@@ -252,6 +251,4 @@ class Appointment:
             print(f"Error fetching all appointments: {e}")
             return []
 
-
-## Σημειώσεις
 
