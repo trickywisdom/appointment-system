@@ -30,7 +30,7 @@ def setup_database():
     conn.commit()
     conn.close()
     
-# TODO Customer
+
 class Customer:
     def __init__(self, first_name, last_name, phone, email, id=None):
         self.first_name = first_name
@@ -88,9 +88,6 @@ class Customer:
 
     @staticmethod
     def get_all():
-        """
-        Retrieve all customers with their full names.
-        """
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
@@ -103,9 +100,7 @@ class Customer:
         
     @classmethod
     def get_name_by_id(self, customer_id):
-        """
-        Retrieve a customer's full name by their customer ID.
-        """
+#Εύρεση του ονοματεπώνυμου πελάτη με βάση το ID του
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
@@ -121,9 +116,7 @@ class Customer:
         
     @classmethod
     def get_customer_by_id(self, customer_id):
-        """
-        Retrieve a customer's full info by their customer ID.
-        """
+#Εύερση όλων των στοιχείων του πελάτη μέσω του id του
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
@@ -139,7 +132,7 @@ class Customer:
             print(f"Error retrieving customer by ID: {e}")
             return None
             
-# TODO Appointment
+
 class Appointment:
     def __init__(self, customer_id, datetime, services, duration=20, notes="", id=None,
                  customer_name=None, customer_phone=None, customer_email=None):
@@ -238,9 +231,7 @@ class Appointment:
 
     @staticmethod
     def get_all():
-        """
-        Retrieve all appointments.
-        """
+#Εύρεση όλων των ραντεβού
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
