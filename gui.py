@@ -1,6 +1,8 @@
 # pip install tkcalendar xlsxwriter smtplib pillow sv-ttk tkinter-tooltip
+import os
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, PhotoImage
+import database
 import models
 from models import Customer, Appointment
 from tkcalendar import DateEntry
@@ -37,22 +39,31 @@ def set_greek_locale():
 # Ορισμός locale
 set_greek_locale()
 
-models.setup_database()
+database.setup_database()
 
 class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Hairway to heaven")
         self.geometry("900x600+250+150")
-        # # Κεντράρισμα παραθύρου ### Κώδικας Σοφοκλή από main.py
-        # self.update_idletasks()
-        # width = self.winfo_width()
-        # height = self.winfo_height()
-        # x = (self.winfo_screenwidth() // 2) - (width // 2)
-        # y = (self.winfo_screenheight() // 2) - (height // 2)
-        # self.geometry(f'900x600+{x}+{y}') ###
+        # Κεντράρισμα παραθύρου ### Κώδικας Σοφοκλή από main.py
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f'900x600+{x}+{y}') ###
         sv_ttk.set_theme("light")
         self.resizable(False, False) # δεν επιτρέπει το resize του παραθύρου...
+        # Φόρτωση - αντικατάσταση favicon ##! δεν δουλεύει στα popup
+        try:
+            current_dir = os.path.dirname(__file__)  # /appointment_system/gui/
+            image_path = os.path.join(current_dir, "images", "favicon.png")
+            self.favicon = PhotoImage(file=image_path)
+            self.iconphoto(False, self.favicon)
+        except:
+            print("Πρόβλημα με την φόρτωση εικόνας favicon.png")
+            favicon = None
 
         # Header
         self.header = tk.Frame(self, bg="#2196F3", height=40)
@@ -167,7 +178,7 @@ class CalendarView(tk.Frame):
         self.day_labels = []  # Λίστα για τις ετικέτες ημερών
         self.inner_frames = []  # Λίστα για όλα τα inner frames
 
-        self.bg_colors = ["#e3f2fd", "#F5F2E9", "#d2f6e6", "#fff2f7"] # τα εναλλασσόμενα χρώματα bg στα ραντεβού του custom calendar
+        self.bg_colors = ["#e3f2fd", "#F5F2E9", "#d2f6e6", "#fff2f7"] # τα εναλλασσόμενα bg χρώματα στα ραντεβού του custom calendar
 
         self.first_time = True
         self.build_grid()
@@ -350,7 +361,14 @@ class DashboardPage(tk.Frame):
         super().__init__(parent)
         self.controller = controller
         self.open_for_first_time = True
-        
+        # Φόρτωση εικόνας
+        try:
+            current_dir = os.path.dirname(__file__)  # /appointment_system/gui/
+            image_path = os.path.join(current_dir, "images", "closebtn_square.png")
+            self.closebtn_square = PhotoImage(file=image_path)
+        except:
+            print("Πρόβλημα με την φόρτωση εικόνας closebtn_square.png")
+            self.closebtn_square = None
         
         # Left Side Menu
         self.left_menu = tk.Frame(self, bg="#F4F4F4", width=224)
@@ -385,9 +403,45 @@ class DashboardPage(tk.Frame):
 
         # === Search Entry ===
         # Search Listbox
-        self.l1 = tk.Listbox(self, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
-        self.close_btn = tk.Button(self, text="X", command=lambda: (self.l1.place_forget(), self.close_btn.place_forget()))
-        
+        self.l1 = tk.Listbox(self, relief="flat", width=1, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
+        # self.close_btn = tk.Button(self, text="X", bg="#0560b6", relief="flat", command=lambda: (self.l1.place_forget(), self.close_btn.place_forget(), self.scrollbar.place_forget()))
+        self.close_btn = tk.Button(
+            self,
+            image=self.closebtn_square,
+            text="" if self.closebtn_square else "X",  # Fallback
+            bg=self["bg"] if self.closebtn_square else"#e3f2fd",
+            activebackground=self["bg"],
+            borderwidth=0,
+            highlightthickness=0,
+            border=0,
+            relief="flat",
+            cursor="hand2",
+            command=lambda: (self.l1.place_forget(), self.close_btn.place_forget(), self.scrollbar.place_forget(), self.newclient_btn.place_forget())
+        )
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.l1.yview)
+        self.l1.configure(yscrollcommand=self.scrollbar.set)
+        self.newclient_btn = tk.Button(
+            self.l1,
+            text="Δημιουργία Νέου Πελάτη",
+            cursor="hand2",
+            bg="white", # "#83b3db" bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
+            # highlightcolor="#ffa82e",
+            # activebackground="#fc962a",
+            activeforeground="#000000",
+            fg="#505E66",
+            # relief=tk.FLAT,
+            relief="ridge",
+            borderwidth=0,
+            highlightthickness=0,
+            border=0,
+            bd=1,
+            padx=6,
+            pady=5,
+            width=21,
+            font=('"Segoe UI Semibold" 10'),
+            # anchor="w",
+            command=lambda: print("Button clicked!") or self.show_new_client_popup()
+        )
         # Search Entry
         self.search_var = tk.StringVar()
         self.search_var.trace_add('write', self.search_customer)
@@ -399,23 +453,34 @@ class DashboardPage(tk.Frame):
                                         border=1, borderwidth=8,
                                             highlightbackground="#e9e9e9", highlightthickness=1, highlightcolor="#C3C6CA", insertbackground="#686868",
                                               width=25)
-        self.search_client.insert(0, "    Επώνυμο 🔍 Τηλέφωνο")
+        self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
         self.search_client.bind("<FocusIn>", lambda args: self.search_client.delete('0', 'end'))
         # self.search_client.bind("<FocusOut>", lambda args: self.search_client.insert(0, "🔍Επώνυμο ή Τηλ"))
         self.search_client.pack(anchor="nw", pady=(15,45), ipady=0, padx=13, expand=1)
 
-        def add_hover_effect(button, base_color, hover_color, active_color):
+        def add_hover_effect(button, base_color, hover_color, active_color, hover_fg=None):
             button.configure(bg=base_color, activebackground=active_color)
 
             def on_enter(e):
                 button['background'] = hover_color
+                button['fg'] = hover_fg
 
             def on_leave(e):
                 button['background'] = base_color
 
             button.bind("<Enter>", on_enter)
             button.bind("<Leave>", on_leave)
-
+        
+        add_hover_effect(
+            self.newclient_btn,
+            base_color="#FFFFFF",      # λευκό
+            hover_color="#F8F8F8",     # λίγο πιο σκοτεινό άσπρο
+            active_color="#ECECEC",     # ακόμα λίγο πιο σκοτεινό άσπρο
+            # fg="#505E66",
+            hover_fg = "#000000",
+            # bg="#FFFFFF",
+            # activebackground="#fc962a",
+        )
         # Νέο Ραντεβού Button
         self.new_appt_btn = tk.Button(
             self.left_menu,
@@ -488,6 +553,9 @@ class DashboardPage(tk.Frame):
         fg="#ffffff", bg="#505E66", padx=7, pady=7)
 
         self.search_client.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
+        self.l1.bind("<B1-Motion>", lambda e: "break")  # Αριστερό κλικ drag
+        self.l1.bind("<B3-Motion>", lambda e: "break")  # Μεσαίο κλικ drag
+        self.l1.bind("<B3-Motion>", lambda e: "break")  # Δεξί κλικ drag
         self.l1.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
 
         # Περιεχόμενο
@@ -499,6 +567,8 @@ class DashboardPage(tk.Frame):
 
         self.l1.place_forget()
         self.close_btn.place_forget()
+        self.scrollbar.place_forget()
+        self.newclient_btn.place_forget()
 
     def on_minical_date_selected(self, event=None):
         try:
@@ -508,7 +578,7 @@ class DashboardPage(tk.Frame):
             selected_date = datetime.now().date()  # Fallback σε σημερινή ημερομηνία
             self.calendar_view.rebuild_calendar(selected_date)
 
-    def hide_listbox_if_needed(self, event=None):
+    def hide_listbox_if_needed(self, event=None): ##???
         # Έλεγχος αν το ποντίκι είναι πάνω από το listbox ή το entry
         mouse_over_listbox = (self.l1.winfo_containing(event.x_root, event.y_root) if event else False)
         mouse_over_entry = (self.search_client.winfo_containing(event.x_root, event.y_root) if event else False)
@@ -517,7 +587,10 @@ class DashboardPage(tk.Frame):
                 mouse_over_listbox or 
                 mouse_over_entry):
             self.l1.place_forget()
+            self.scrollbar.place_forget()
             self.close_btn.place_forget()
+            self.newclient_btn.place_forget() # βγάζει πρόβλημα με το ttk.Button. Το κουμπί πριν δώσει την εντολή εξαφανίζεται.
+            
 
     def search_customer(self, *args):
         
@@ -543,6 +616,8 @@ class DashboardPage(tk.Frame):
             self.search_var.set(value)
             self.l1.place_forget()
             self.close_btn.place_forget()
+            self.scrollbar.place_forget()
+            self.newclient_btn.place_forget()
             self.focus_set()
 
         self.l1.delete(0, 'end')
@@ -550,7 +625,7 @@ class DashboardPage(tk.Frame):
         # if not filtered_customers and self.query:  # Αν δεν βρέθηκαν αποτελέσματα
         if not filtered_customers and len(self.query) >= 2:  # Μόνο αν έχει πληκτρολογήσει τουλάχιστον 2 χαρακτήρες
 
-            self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
+            self.l1.insert(tk.END, "   Ο πελάτης δε βρέθηκε...")
             # # Αύξηση ύψους του Listbox
             # self.l1.configure(height=2)  # Θα δείχνει 2 γραμμές ταυτόχρονα
             # # Εισαγωγή σε 2 ξεχωριστές γραμμές
@@ -558,16 +633,28 @@ class DashboardPage(tk.Frame):
             # self.l1.insert(tk.END, " Κάντε κλικ για δημιουργία.")
             # self.l1.itemconfig(0, {'fg': 'blue'})
             # self.l1.itemconfig(1, {'fg': 'blue'})
-            self.l1.itemconfig(0, {'fg': 'blue', 'selectbackground': "#fafafa", 'selectforeground': "#4CAF50"})
-            self.l1.bind("<<ListboxSelect>>", self.create_new_client)
-            self.l1.bind("<Enter>", lambda e: self.l1.config(cursor="hand2") if "Δε βρέθηκε" in self.l1.get(0) else None)
-            self.l1.bind("<Leave>", lambda e: self.l1.config(cursor=""))
+            self.l1.itemconfig(0, {'fg': 'black'})
+            # self.newclient_btn.place(
+            #             relx=0.211, rely=0.585,)
+            # self.newclient_btn.lift()
+            # self.l1.bind("<<ListboxSelect>>", self.create_new_client)
+            # self.l1.bind("<Enter>", lambda e: self.l1.config(cursor="hand2") if "βρέθηκε" in self.l1.get(0) else None)
+            # self.l1.bind("<Leave>", lambda e: self.l1.config(cursor=""))
+            # Απενεργοποίηση αλληλεπίδρασης
+            self.l1.bind("<Button-1>", lambda e: "break")  # Απενεργοποιεί αριστερό κλικ
+            self.l1.bind("<Double-Button-1>", lambda e: "break")  # Απενεργοποιεί διπλό κλικ
+            self.l1.bind("<Return>", lambda e: "break")  # Αν πατήσει Enter
         else:
+            self.newclient_btn.place_forget()
+            # Αν υπάρχουν πελάτες, επαναφέρουμε τα bindings (π.χ. σε default handler)
+            self.l1.unbind("<Button-1>")
+            self.l1.unbind("<Double-Button-1>")
+            self.l1.unbind("<Return>")
             for customer in filtered_customers:
                 full_name = f"{customer[0]} {customer[1]}"
                 self.l1.insert(tk.END,f" {full_name}")
             self.l1.bind("<<ListboxSelect>>", my_upd)
-
+            
         #Configure the listitems
         for row_index in range(len(filtered_customers)):
             bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
@@ -576,21 +663,40 @@ class DashboardPage(tk.Frame):
 
         self.l1.place(
                         relx=0.01, rely=0.53,
-                        width=225, height=240)
+                        width=204, height=241)
+        
         self.close_btn.place(
-                        relx=0.22, rely=0.485,)
+                        relx=0.237, rely=0.482,)
+        
+        self.scrollbar.place(
+            x=10+202,  # Δίπλα από το listbox
+            y=self.search_client.winfo_y() + self.search_client.winfo_height() + 5,
+            height=235
+        )
+        self.newclient_btn.place(
+                        relx=0.034, rely=0.120,)
         self.l1.lift()
+        self.scrollbar.lift()
         self.close_btn.lift()
+        # if not filtered_customers and len(self.query) >= 2:
+        #     self.newclient_btn.lift()
+        # self.newclient_btn.lift()
+        # self.l1.bind("<Enter>", lambda e: self.newclient_btn.place_forget())
+        if "βρέθηκε" in self.l1.get(0):
+            self.newclient_btn.lift()
+        else:
+            self.newclient_btn.place_forget()
 
     def create_new_client(self, event):
         # Έλεγχος αν επιλέχθηκε το self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
         widget = event.widget
         selection = widget.curselection()
-        if selection and widget.get(selection[0]) == " Δε βρέθηκε. Δημιουργία πελάτη.":
+        if selection and widget.get(selection[0]) == "   Ο πελάτης δε βρέθηκε...":
             self.show_new_client_popup()
         self.focus_set()
 
     def show_new_client_popup(self):
+        print("Opening popup...")
         popup = tk.Toplevel(self)
         popup.title("Νέος Πελάτης")
         popup.geometry("600x400")
@@ -610,6 +716,10 @@ class DashboardPage(tk.Frame):
 
         self.l1.place_forget()
         self.close_btn.place_forget()
+        self.scrollbar.place_forget()
+        self.newclient_btn.place_forget()
+
+        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup
@@ -620,11 +730,12 @@ class DashboardPage(tk.Frame):
                 popup.lift()
                 popup.grab_set() # Απαιτεί από τον χρήστη να αλληλεπιδράσει πρώτα με αυτό το παράθυρο
                 popup.focus_force() # Δίνει focus στο popup
-                print("Popup focused:", popup)
+                # print("Popup focused:", popup)
             except Exception as e:
                 print("Focus error:", e)
 
         self.after(300, lambda: force_focus(self, self.current_popup))
+        print("Opening popup...")
   
     def show_appointment_popup(self, appointment, customer_name):
         popup = tk.Toplevel(self)
@@ -660,6 +771,8 @@ class DashboardPage(tk.Frame):
         x = (popup.winfo_screenwidth() // 2) - (width // 2)
         y = (popup.winfo_screenheight() // 2) - (height // 2)
         popup.geometry(f"{width}x{height}+{x}+{y}")
+
+        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup
@@ -676,9 +789,11 @@ class DashboardPage(tk.Frame):
             popup.destroy()
         # popup.destroy()
         self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
-        self.search_client.insert(0, "    Επώνυμο 🔍 Τηλέφωνο")
+        self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
         self.l1.place_forget()
         self.close_btn.place_forget()
+        self.scrollbar.place_forget()
+        self.newclient_btn.place_forget()
         self.focus_set()        
         
     def show_all_customers(self):
@@ -698,7 +813,7 @@ class DashboardPage(tk.Frame):
             pass
         else:
             self.search_client.delete(0, tk.END)
-            self.search_client.insert(0, "    Επώνυμο 🔍 Τηλέφωνο")
+            self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
             # 1. Λήψη σημερινής ημερομηνίας
             today = datetime.today().date()
             # 2. Ορισμός επιλογής στο calendar
@@ -707,6 +822,8 @@ class DashboardPage(tk.Frame):
             self.calendar_view.rebuild_calendar(selected_date)
             self.l1.place_forget()
             self.close_btn.place_forget()
+            self.scrollbar.place_forget()
+            self.newclient_btn.place_forget()
             self.focus_set()    
         self.open_for_first_time = False      
 
@@ -790,7 +907,7 @@ class ClientsPage(tk.Frame):
         ]
 
         # Ταξινόμηση
-        filtered_customers.sort(key=lambda x: (x[1] == "", x[1]))
+        filtered_customers.sort(key=lambda x: (x[1] == "", x[1])) #πιθανόν δε χρειάζεται πια, γίνεται από το models
 
         # === Εμφάνιση ===
         total_rows = max(len(filtered_customers), 10)
@@ -954,7 +1071,6 @@ class ClientsPage(tk.Frame):
         All customers with details (name, surname, phone, email, id).
         """
         try:
-            # all_customers = Customer.get_all()
             customers_list = [(c.first_name, c.last_name, c.phone, c.email, c.id) for c in Customer.get_all()]
             return customers_list
             
@@ -974,13 +1090,20 @@ class NewAppointPage(tk.Frame):
         self.controller = controller
 
         self.editing = False
-        print("self.editing0", self.editing)
         self.selected_name = ""
         self.selected_id = None
         self.current_customer_id = None
         self.current_appointment_id = None
         self.datetime_obj = None # για την περίπτωση του edit: δεν θέλουμε να αφαιρούνται τα time_options που αφορούν το συγκεκριμένο ραντεβού
         self.onlyinit = True
+        # Φόρτωση εικόνας
+        try:
+            current_dir = os.path.dirname(__file__)  # /appointment_system/gui/
+            image_path = os.path.join(current_dir, "images", "closebtn_rounded.png")
+            self.closebtn_rounded = PhotoImage(file=image_path)
+        except:
+            print("Πρόβλημα με την φόρτωση εικόνας closebtn_rounded.png")
+            self.closebtn_rounded = None
 
         self.content = ttk.Frame(self, padding=(260,25), border=5, borderwidth=3)
         self.content.pack(expand=1, ipady=10, fill="both")
@@ -988,23 +1111,84 @@ class NewAppointPage(tk.Frame):
         ttk.Label(self.content, text="Πελάτης:", anchor="w", width=20).grid(row=0, column=0, sticky="w", pady=10)
 
         self.l1 = tk.Listbox(self.content, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
+        self.close_btn = tk.Button(
+                    self.content,
+                    image=self.closebtn_rounded,
+                    text="" if self.closebtn_rounded else "X",  # Fallback
+                    bg=self["bg"] if self.closebtn_rounded else"#e3f2fd",
+                    bd=0,
+                    activebackground=self["bg"],  # για να μη δείχνει γκρι όταν πατιέται
+                    # bg=self["bg"]  # ή απλώς αφαίρεσέ το τελείως
+                    borderwidth=0,
+                    highlightthickness=0,
+                    relief="flat",
+                    cursor="hand2",
+                    command=lambda: (self.l1.place_forget(), self.close_btn.place_forget(), self.scrollbar.place_forget(), self.newclient_btn.place_forget())
+                )        
+        self.scrollbar = ttk.Scrollbar(self.content, orient="vertical", command=self.l1.yview)
+        self.l1.configure(yscrollcommand=self.scrollbar.set)
+        self.newclient_btn = tk.Button(
+            self.l1,
+            text="Δημιουργία Νέου Πελάτη",
+            cursor="hand2",
+            bg="white", # "#83b3db" bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
+            # highlightcolor="#ffa82e",
+            # activebackground="#fc962a",
+            activeforeground="#000000",
+            fg="#505E66",
+            # relief=tk.FLAT,
+            relief="ridge",
+            borderwidth=0,
+            highlightthickness=0,
+            border=0,
+            bd=1,
+            padx=6,
+            pady=4,
+            width=21,
+            font=('"Segoe UI Semibold" 10'),
+            # anchor="w",
+            command=lambda: print("Button clicked!") or self.show_new_client_popup()
+        )
+        def add_hover_effect(button, base_color, hover_color, active_color, hover_fg=None):
+            button.configure(bg=base_color, activebackground=active_color)
+
+            def on_enter(e):
+                button['background'] = hover_color
+                button['fg'] = hover_fg
+
+            def on_leave(e):
+                button['background'] = base_color
+
+            button.bind("<Enter>", on_enter)
+            button.bind("<Leave>", on_leave)
+        
+        add_hover_effect(
+            self.newclient_btn,
+            base_color="#FFFFFF",      # λευκό
+            hover_color="#F8F8F8",     # λίγο πιο σκοτεινό άσπρο
+            active_color="#ECECEC",     # ακόμα λίγο πιο σκοτεινό άσπρο
+            # fg="#505E66",
+            hover_fg = "#000000",
+            # bg="#FFFFFF",
+            # activebackground="#fc962a",
+        )
         # Πεδίο αναζήτησης
         self.search_var = tk.StringVar()
         self.search_var.trace_add('write', self.search_customer)
         self.search_client = ttk.Entry(self.content, textvariable=self.search_var)
-        self.search_client.insert(0, "Επώνυμο 🔍 Τηλέφωνο")
+        self.search_client.insert(0, "🔍Επώνυμο & Τηλέφωνο")
         self.search_client.bind("<FocusIn>", lambda args: self.search_client.delete('0', 'end'))
 
         self.search_client.grid(row=0, column=1, sticky="w", pady=10)
 
-        self.scrollbar = ttk.Scrollbar(self.content, orient="vertical", command=self.l1.yview)
-        self.l1.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.place(
-            x=10+555,  # Δίπλα από το listbox
-            y=self.search_client.winfo_y() + self.search_client.winfo_height() + 20,
-            height=220
-        )
-        self.scrollbar.lift()
+        
+        
+        # self.scrollbar.place(
+        #     x=10+555,  # Δίπλα από το listbox
+        #     y=self.search_client.winfo_y() + self.search_client.winfo_height() + 20,
+        #     height=220
+        # )
+        # self.scrollbar.lift()
         # Πρέπει να γίνει update για να ξέρουμε τις συντεταγμένες του entry
         self.search_client.update_idletasks()
 
@@ -1032,7 +1216,9 @@ class NewAppointPage(tk.Frame):
         self.notes.grid(row=5, column=0, columnspan=2, padx=0, ipady=35, ipadx=100, sticky="nw")
         
         self.l1.place_forget()
+        self.close_btn.place_forget()
         self.scrollbar.place_forget()
+        self.newclient_btn.place_forget()
 
         # Κάθε φορά που αλλάζει η Ημερομηνία ή η Υπηρεσία, ξαναϋπολόγισε τις διαθέσιμες ώρες
         self.appoint_date.bind("<<DateEntrySelected>>", self.get_time_options)
@@ -1040,6 +1226,9 @@ class NewAppointPage(tk.Frame):
 
         # Όταν χάνει το focus, κρύψε το Listbox
         self.search_client.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
+        self.l1.bind("<B1-Motion>", lambda e: "break")  # Αριστερό κλικ drag
+        self.l1.bind("<B3-Motion>", lambda e: "break")  # Μεσαίο κλικ drag
+        self.l1.bind("<B3-Motion>", lambda e: "break")  # Δεξί κλικ drag
         self.l1.bind("<FocusOut>", lambda e: self.hide_listbox_if_needed())
         
 
@@ -1131,7 +1320,8 @@ class NewAppointPage(tk.Frame):
                 mouse_over_entry):
             self.l1.place_forget()
             self.scrollbar.place_forget() 
-            # self.close_btn.place_forget()
+            self.close_btn.place_forget()
+            self.newclient_btn.place_forget()
 
     def search_customer(self, *args):
         customer_list = self.show_all_customers()
@@ -1148,20 +1338,19 @@ class NewAppointPage(tk.Frame):
             index = int(my_w.curselection()[0])
             customer = filtered_customers[index]
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
-            print("self.selected_id", self.selected_id)
             value = my_w.get(index).strip()
             self.selected_name = value
-            print("value", value)
             self.search_var.set(value)
-            print("1search_customer")
             self.l1.place_forget()
             self.scrollbar.place_forget()
+            self.close_btn.place_forget()
+            self.newclient_btn.place_forget()
             self.focus_set()
 
         self.l1.delete(0, 'end')
         # if not filtered_customers and self.query:  # Αν δεν βρέθηκαν αποτελέσματα
         if not filtered_customers and len(self.query) >= 2:  # Μόνο αν έχει πληκτρολογήσει τουλάχιστον 2 χαρακτήρες
-            self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
+            self.l1.insert(tk.END, "   Ο πελάτης δε βρέθηκε...")
             # # Αύξηση ύψους του Listbox
             # self.l1.configure(height=2)  # Θα δείχνει 2 γραμμές ταυτόχρονα
             # # Εισαγωγή σε 2 ξεχωριστές γραμμές
@@ -1169,11 +1358,20 @@ class NewAppointPage(tk.Frame):
             # self.l1.insert(tk.END, " Κάντε κλικ για δημιουργία.")
             # self.l1.itemconfig(0, {'fg': 'blue'})
             # self.l1.itemconfig(1, {'fg': 'blue'})
-            self.l1.itemconfig(0, {'fg': 'blue', 'selectbackground': "#fafafa", 'selectforeground': "#4CAF50"})
-            self.l1.bind("<<ListboxSelect>>", self.create_new_client)
-            self.l1.bind("<Enter>", lambda e: self.l1.config(cursor="hand2") if "Δε βρέθηκε" in self.l1.get(0) else None)
-            self.l1.bind("<Leave>", lambda e: self.l1.config(cursor=""))
+            self.l1.itemconfig(0, {'fg': 'black'})
+            # self.l1.bind("<<ListboxSelect>>", self.create_new_client)
+            # self.l1.bind("<Enter>", lambda e: self.l1.config(cursor="hand2") if "βρέθηκε" in self.l1.get(0) else None)
+            # self.l1.bind("<Leave>", lambda e: self.l1.config(cursor=""))
+            # Απενεργοποίηση αλληλεπίδρασης
+            self.l1.bind("<Button-1>", lambda e: "break")  # Απενεργοποιεί αριστερό κλικ
+            self.l1.bind("<Double-Button-1>", lambda e: "break")  # Απενεργοποιεί διπλό κλικ
+            self.l1.bind("<Return>", lambda e: "break")  # Αν πατήσει Enter
         else:
+            self.newclient_btn.place_forget()
+            # Αν υπάρχουν πελάτες, επαναφέρουμε τα bindings (π.χ. σε default handler)
+            self.l1.unbind("<Button-1>")
+            self.l1.unbind("<Double-Button-1>")
+            self.l1.unbind("<Return>")
             for customer in filtered_customers:
                 full_name = f"{customer[0]} {customer[1]}"
                 self.l1.insert(tk.END,f" {full_name}")
@@ -1190,19 +1388,30 @@ class NewAppointPage(tk.Frame):
                         y=self.search_client.winfo_y() + self.search_client.winfo_height() - 60,
                         # relx=1, rely=1,
                         width=215, height=241)
-        # self.close_btn.place(
-        #                 # x=self.search_client.winfo_x() + 80, 
-        #                 # y=self.search_client.winfo_y() + self.search_client.winfo_height() + 60,
-        #                 relx=0.22, rely=0.485,)
+        
+        self.close_btn.place(
+                        relx=1.492, rely=-0.033,)
+        
+        self.scrollbar.place(
+            x=10+548,  # Δίπλα από το listbox
+            y=self.search_client.winfo_y() + self.search_client.winfo_height() - 57,
+            height=235
+        )
+        self.newclient_btn.place(
+                        relx=0.064, rely=0.120,)
         self.l1.lift()
-        # self.scrollbar.lift()
-        # self.close_btn.lift()
+        self.scrollbar.lift()
+        self.close_btn.lift()
+        if "βρέθηκε" in self.l1.get(0):
+            self.newclient_btn.lift()
+        else:
+            self.newclient_btn.place_forget()
 
     def create_new_client(self, event):
         # Έλεγχος αν επιλέχθηκε το self.l1.insert(tk.END, " Δε βρέθηκε. Δημιουργία πελάτη.")
         widget = event.widget
         selection = widget.curselection()
-        if selection and widget.get(selection[0]) == " Δε βρέθηκε. Δημιουργία πελάτη.":
+        if selection and widget.get(selection[0]) == "   Ο πελάτης δε βρέθηκε...":
             self.show_new_client_popup()
         self.focus_set()
 
@@ -1226,7 +1435,10 @@ class NewAppointPage(tk.Frame):
 
         self.l1.place_forget()
         self.scrollbar.place_forget()
-        # self.close_btn.place_forget()
+        self.close_btn.place_forget()
+        self.newclient_btn.place_forget()
+
+        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup
@@ -1237,7 +1449,7 @@ class NewAppointPage(tk.Frame):
                 popup.lift()
                 popup.grab_set()
                 popup.focus_force()
-                print("Popup focused:", popup)
+                # print("Popup focused:", popup)
             except Exception as e:
                 print("Focus error:", e)
 
@@ -1253,10 +1465,11 @@ class NewAppointPage(tk.Frame):
         for popup in open_popups:
             popup.destroy()
         self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
-        self.search_client.insert(0, "Επώνυμο 🔍 Τηλέφωνο")
+        self.search_client.insert(0, "🔍Επώνυμο & Τηλέφωνο")
         self.l1.place_forget()
         self.scrollbar.place_forget()
-        # self.close_btn.place_forget()
+        self.close_btn.place_forget()
+        self.newclient_btn.place_forget()
         self.focus_set()
 
     def save_appoint(self):
@@ -1424,24 +1637,28 @@ class NewAppointPage(tk.Frame):
         self.controller.show_frame("NewAppointPage")
         self.l1.place_forget()
         self.scrollbar.place_forget()
+        self.close_btn.place_forget()
+        self.newclient_btn.place_forget()
         
-    # def create_new_appointment(self, date, time):
+    def create_new_appointment(self, date, time):
         
-    #     self.editing = True
-    #     self.appoint_date.set_date(date)
-    #     self.time_dropdown.set(time)
-    #     self.selected_name = ""
-    #     self.selected_id = None
-    #     self.current_customer_id = None
-    #     self.current_appointment_id = None
-    #     self.search_var.set("Επώνυμο 🔍 Τηλέφωνο")
-    #     self.service_dropdown.set("")
-    #     self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
-    #     self.time_dropdown['state'] = 'disabled'
-    #     self.controller.show_frame("NewAppointPage")
-    #     self.focus_set()
-    #     self.l1.place_forget()
-    #     self.scrollbar.place_forget()
+        self.editing = True
+        self.appoint_date.set_date(date)
+        self.time_dropdown.set(time)
+        self.selected_name = ""
+        self.selected_id = None
+        self.current_customer_id = None
+        self.current_appointment_id = None
+        self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
+        self.service_dropdown.set("")
+        self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
+        self.time_dropdown['state'] = 'disabled'
+        self.controller.show_frame("NewAppointPage")
+        self.focus_set()
+        self.l1.place_forget()
+        self.scrollbar.place_forget()
+        self.close_btn.place_forget()
+        self.newclient_btn.place_forget()
 
 
     def show_all_customers(self):
@@ -1465,7 +1682,7 @@ class NewAppointPage(tk.Frame):
             self.selected_id = None
             self.current_customer_id = None
             self.current_appointment_id = None
-            self.search_var.set("Επώνυμο 🔍 Τηλέφωνο")
+            self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
             self.appoint_date.set_date(datetime.today().date())  # Επαναφέρει τη σημερινή ημερομηνία
             self.time_dropdown.set("")  # Καθαρίζει την ώρα
             self.service_dropdown.set("")  # Καθαρίζει την υπηρεσία
@@ -1474,8 +1691,10 @@ class NewAppointPage(tk.Frame):
             self.get_time_options()
             self.datetime_obj = None
             self.focus_set()  # Αφαιρεί focus από όποιο widget είχε focus
-            self.l1.place_forget()  
+            self.l1.place_forget()
+            self.close_btn.place_forget() 
             self.scrollbar.place_forget()
+            self.newclient_btn.place_forget()
         self.editing = False
         self.onlyinit = False
    
@@ -1745,6 +1964,25 @@ class ShowClientPage(tk.Frame):
             info = widget.grid_info()
             if int(info["row"]) == self.target_index:
                 widget.configure(bg="#0560b6", fg="white")  # highlight τη γραμμή
+
+    def get_appoints_from_id(self, customer_id):
+        try:
+            appoints_list = [(a.datetime, a.services) for a in Appointment.get_by_customer_id(customer_id)]
+
+            new_appoints_list = []
+
+            for date_str, service in appoints_list:
+                dt_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+                date_part = dt_obj.strftime("%d-%m-%Y")
+                time_part = dt_obj.strftime("%H:%M")
+                new_appoints_list.append((date_part, time_part, service))
+
+            appoints_list = new_appoints_list
+
+            return appoints_list      
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            return []
 
             
 class RemindersPage(tk.Frame):
