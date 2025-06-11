@@ -24,16 +24,17 @@ This is a simple desktop application for managing appointments using Python and 
 ```
 appointment-system/
 │
-├── main.py          # Entry point of the application
-├── gui.py           # Graphical interface (Tkinter)
-├── models.py        # Patient & Appointment classes
-├── database.py      # Database connection logic
-├── export_excel.py  # Export appointments to Excel
-├── emails_utils.py  # Notify customers through email
-├── barber.db        # SQLite DB (auto-created)
-├── README.md        # Project overview
-├── .gitignore       # Git ignored files
-└── docs/            # Documentation, diagrams, PDF files
+├── main.py                # Entry point of the application
+├── gui.py                 # Graphical interface (Tkinter)
+├── models.py              # Patient & Appointment classes
+├── database.py            # Database connection logic
+├── export_excel.py        # Export appointments to Excel
+├── emails_utils.py        # Notify customers through email
+├── salon_appointments.db  # SQLite DB (auto-created)
+├── README.md              # Project overview
+├── .gitignore             # Git ignored files
+├── images/                # images for a better looking app
+└── docs/                  # Documentation, diagrams, PDF files
 ```
 
 ## 🚀 Getting Started
@@ -46,7 +47,7 @@ cd appointment-system
 
 2. Install dependencies:
 ```bash
-pip install tkcalendar xlsxwriter smtplib pillow sv-ttk
+pip install tkcalendar xlsxwriter smtplib sv-ttk tkinter-tooltip
 ```
 
 3. Run the app:
