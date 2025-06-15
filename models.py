@@ -157,7 +157,7 @@ class Appointment:
         
         
     @staticmethod
-    def get_by_date(date):
+    def get_by_date(date):                                    
         #Επιστρέφει όλα τα ραντεβού μιας συγκεκριμένης ημέρας
         with sqlite3.connect('salon_appointments.db') as conn:
             c = conn.cursor()
@@ -188,7 +188,7 @@ class Appointment:
             
 
     @staticmethod
-    def get_by_customer_id(customer_id):
+    def get_by_customer_id(customer_id):                #επιστροφη ολων των ραντεβου βαση id πελατη
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
