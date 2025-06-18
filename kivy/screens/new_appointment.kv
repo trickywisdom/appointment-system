@@ -1,0 +1,187 @@
+#:kivy 2.3.1
+# screens/new_appointment.kv
+
+<NewAppointmentScreen>:
+    # Reference Kivy properties defined in the Python class
+    customer_spinner: customer_spinner_id
+    service_spinner: service_spinner_id
+    duration_spinner: duration_spinner_id
+    date_input: date_input_id
+    time_input: time_input_id
+    notes_input: notes_input_id
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+
+        # Header Section
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10)
+            Label:
+                text: "Νέο Ραντεβού"
+                font_size: '24sp'
+                color: 0.12, 0.25, 0.44, 1 # A nice blue color
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+
+        # Main Content Area - Form
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: dp(15)
+            padding: dp(20)
+            canvas.before:
+                Color:
+                    rgba: 0.95, 0.95, 0.95, 1 # Light gray background
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [dp(10),]
+
+            # Customer Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Πελάτης:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                Spinner:
+                    id: customer_spinner_id
+                    text: "Επιλέξτε Πελάτη"
+                    size_hint_x: 1
+                    # on_text: root.customer_spinner.text = args[1] # No need to re-assign to property from here
+                                                                    # The property is already bound to the Spinner's text
+                    on_parent: self.text = self.values[0] if self.values else "Επιλέξτε Πελάτη" # Set default text when spinner gets values
+
+            # Service Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Υπηρεσία:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                Spinner:
+                    id: service_spinner_id
+                    text: "Επιλέξτε Υπηρεσία"
+                    size_hint_x: 1
+                    on_text: root.update_duration_spinner(args[1]) # Call method on text change
+                    on_parent: self.text = self.values[0] if self.values else "Επιλέξτε Υπηρεσία"
+
+            # Duration Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Διάρκεια (λεπτά):"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                Spinner:
+                    id: duration_spinner_id
+                    text: "Επιλέξτε Διάρκεια"
+                    size_hint_x: 1
+                    on_parent: self.text = self.values[0] if self.values else "0"
+
+            # Date Row (consider a date picker here later)
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Ημερομηνία:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: date_input_id
+                    hint_text: "DD-MM-YYYY"
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+                    # Input filter for date format validation can be added later if needed
+
+            # Time Row (consider a time picker here later)
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Ώρα:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: time_input_id
+                    hint_text: "HH:MM"
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+                    # Input filter for time format validation can be added later if needed
+
+            # Notes Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(100) # Increased height for multiline text
+                Label:
+                    text: "Σημειώσεις:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'top' # Align to top for multiline input
+                    text_size: self.size
+                TextInput:
+                    id: notes_input_id
+                    hint_text: "Πρόσθετες σημειώσεις"
+                    size_hint_x: 1
+                    multiline: True
+                    write_tab: False
+
+        # Button Section
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10), dp(0)
+            spacing: dp(10)
+            halign: 'center'
+            valign: 'center'
+
+            Button:
+                text: "Αποθήκευση Ραντεβού"
+                size_hint_x: 0.5
+                background_color: 0.03, 0.37, 0.71, 1 # Accent blue
+                color: 1, 1, 1, 1 # White text
+                on_release: root.save_appointment()
+            Button:
+                text: "Εκκαθάριση"
+                size_hint_x: 0.3
+                background_color: 0.6, 0.6, 0.6, 1 # Gray
+                color: 1, 1, 1, 1
+                on_release: root.clear_form_fields()
+            Button:
+                text: "Επιστροφή"
+                size_hint_x: 0.2
+                background_color: 0.8, 0.8, 0.8, 1 # Light gray
+                color: 0, 0, 0, 1 # Black text
+                on_release: root.go_back()

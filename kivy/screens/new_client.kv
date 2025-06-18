@@ -1,0 +1,168 @@
+#:kivy 2.3.1
+# kivy/screens/new_client.kv
+
+<NewClientScreen>:
+    # Bind ObjectProperties from Python class to KV widgets
+    first_name_input: first_name_input_id
+    last_name_input: last_name_input_id
+    phone_input: phone_input_id
+    email_input: email_input_id
+    notes_input: notes_input_id
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+
+        # Header Section
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10)
+            Label:
+                text: "Νέος Πελάτης"
+                font_size: '24sp'
+                color: 0.12, 0.25, 0.44, 1 # Accent blue
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+
+        # Main Content Area - Form
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: dp(15)
+            padding: dp(20)
+            canvas.before:
+                Color:
+                    rgba: 0.95, 0.95, 0.95, 1 # Light gray background
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [dp(10),]
+
+            # First Name Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Όνομα:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: first_name_input_id
+                    hint_text: "Π.χ. Μαρία"
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+
+            # Last Name Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Επώνυμο:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: last_name_input_id
+                    hint_text: "Π.χ. Παπαδοπούλου"
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+
+            # Phone Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Τηλέφωνο:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: phone_input_id
+                    hint_text: "Π.χ. 69XXXXXXXX"
+                    input_type: 'number' # Suggests numeric keyboard on mobile
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+
+            # Email Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                Label:
+                    text: "Email:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'center'
+                    text_size: self.size
+                TextInput:
+                    id: email_input_id
+                    hint_text: "Π.χ. email@example.com"
+                    input_type: 'text' # Default, but explicit for clarity
+                    input_filter: None # Αυτό είναι το σωστό για να μην υπάρχει φίλτρο ### Can add email validation later
+                    size_hint_x: 1
+                    multiline: False
+                    write_tab: False
+
+            # Notes Row
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(100) # Increased height for multiline text
+                Label:
+                    text: "Σημειώσεις:"
+                    size_hint_x: None
+                    width: dp(120)
+                    halign: 'right'
+                    valign: 'top'
+                    text_size: self.size
+                TextInput:
+                    id: notes_input_id
+                    hint_text: "Πρόσθετες σημειώσεις για τον πελάτη"
+                    size_hint_x: 1
+                    multiline: True
+                    write_tab: False
+
+        # Button Section
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10), dp(0)
+            spacing: dp(10)
+            halign: 'center'
+            valign: 'center'
+
+            Button:
+                text: "Αποθήκευση Πελάτη"
+                size_hint_x: 0.5
+                background_color: 0.03, 0.37, 0.71, 1 # Accent blue
+                color: 1, 1, 1, 1 # White text
+                on_release: root.save_client()
+            Button:
+                text: "Εκκαθάριση"
+                size_hint_x: 0.3
+                background_color: 0.6, 0.6, 0.6, 1 # Gray
+                color: 1, 1, 1, 1
+                on_release: root.clear_form_fields()
+            Button:
+                text: "Επιστροφή"
+                size_hint_x: 0.2
+                background_color: 0.8, 0.8, 0.8, 1 # Light gray
+                color: 0, 0, 0, 1 # Black text
+                on_release: root.go_back()
