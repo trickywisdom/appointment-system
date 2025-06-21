@@ -1,1 +1,197 @@
 #:kivy 2.3.1
+# kivy/screens/clients.kv
+
+# Ορίζουμε τα χρώματα που θέλουμε
+# Light Cyan (ανοιχτό γαλάζιο): 0.88, 1, 1, 1 (RGBa)
+# Light Yellow (ανοιχτό μπεζ): 1, 0.98, 0.8, 1 (RGBa)
+# Medium Gray (για επιλογή): 0.7, 0.7, 0.7, 1
+# Define how each item in the RecycleView will look
+<ClientListItem>:
+    orientation: 'horizontal'
+    size_hint_y: None
+    height: dp(60)
+    padding: dp(5)
+    spacing: dp(5)
+    canvas.before:
+        Color:
+            # Εδώ εφαρμόζουμε τη λογική για τα εναλλασσόμενα χρώματα
+            # Ελέγχουμε αν το row_index είναι άρτιος (ζυγός) ή περιττός (μονός)
+            # και αν η γραμμή είναι σε κατάσταση 'normal'
+            rgba: (0.88, 1, 1, 1) if root.row_index % 2 == 0 and root.state == 'normal' else (1, 0.98, 0.8, 1) if root.row_index % 2 != 0 and root.state == 'normal' else (0.7, 0.7, 0.7, 1) # Χρώμα όταν η γραμμή πατιέται (selected state)
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [dp(5),]
+
+    Label:
+        text: root.client_last_name
+        font_size: '16sp'
+        halign: 'left'
+        valign: 'middle'
+        text_size: self.width, self.height
+        size_hint_x: 0.25
+        color: 0, 0, 0, 1
+
+    Label:
+        text: root.client_first_name
+        font_size: '16sp'
+        halign: 'left'
+        valign: 'middle'
+        text_size: self.width, self.height
+        size_hint_x: 0.25
+        color: 0, 0, 0, 1
+
+    Label:
+        text: root.client_phone
+        font_size: '14sp'
+        halign: 'center'
+        valign: 'middle'
+        text_size: self.width, self.height
+        size_hint_x: 0.2
+        color: 0, 0, 0, 1
+
+    Label:
+        text: root.client_email
+        font_size: '12sp'
+        halign: 'right'
+        valign: 'middle'
+        text_size: self.width, self.height
+        size_hint_x: 0.2
+        color: 0, 0, 0, 1
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_x: 0.2
+        spacing: dp(2)
+
+        Button:
+            text: "Εμφάνιση"
+            font_size: '10sp'
+            on_release: root.show_details()
+            background_normal: ''
+            background_color: 0.1, 0.5, 0.8, 1
+            color: 1, 1, 1, 1
+            padding: dp(2), dp(2)
+
+        Button:
+            text: "Επεξεργασία"
+            font_size: '10sp'
+            on_release: root.edit_client()
+            background_normal: ''
+            background_color: 0.2, 0.6, 0.2, 1
+            color: 1, 1, 1, 1
+            padding: dp(2), dp(2)
+
+        Button:
+            text: "Διαγραφή"
+            font_size: '10sp'
+            on_release: root.delete_client()
+            background_normal: ''
+            background_color: 0.8, 0.2, 0.2, 1
+            color: 1, 1, 1, 1
+            padding: dp(2), dp(2)
+
+
+<ClientsScreen>:
+    client_list_rv: client_list_rv_id
+    rv_data: root.rv_data
+    search_text: search_input_id.text
+    search_input: search_input_id
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+        # --- Σημαντικό: Λευκό φόντο για ΟΛΗ την οθόνη ---
+        canvas.before:
+            Color:
+                rgba: 0.9, 0.9, 0.9, 1 # Ολόλευκο φόντο
+            Rectangle:
+                size: self.size
+                pos: self.pos
+
+        # Header Section
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10)
+            Label:
+                text: "Λίστα Πελατών"
+                font_size: '24sp'
+                color: 0.12, 0.25, 0.44, 1
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+
+        # Search Bar
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            TextInput:
+                id: search_input_id
+                hint_text: "Αναζήτηση σε Επώνυμο ή Τηλέφωνο..."
+                size_hint_x: 1
+                multiline: False
+                write_tab: False
+                on_text: root.update_search_text(self)
+                background_normal: ''
+                background_active: ''
+                background_color: 1, 1, 1, 1 # Λευκό φόντο για το TextInput
+                foreground_color: 0, 0, 0, 1
+                cursor_color: 0, 0, 0, 1
+                padding: [dp(10), dp(10), dp(10), dp(10)]
+
+        # Client List - RecycleView
+        RecycleView:
+            id: client_list_rv_id
+            viewclass: 'ClientListItem'
+            data: root.rv_data
+            do_scroll_y: True
+            # --- Σημαντικό: Λευκό φόντο για το RecycleView ---
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1 # Λευκό φόντο
+                Rectangle:
+                    size: self.size
+                    pos: self.pos
+
+            RecycleBoxLayout:
+                default_size: None, dp(60)
+                default_size_hint: 1, None
+                orientation: 'vertical'
+                spacing: dp(5)
+                padding: dp(5)
+                size_hint_y: None
+                height: self.minimum_height
+                # --- Σημαντικό: Λευκό φόντο για το RecycleBoxLayout ---
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 1 # Λευκό φόντο
+                    Rectangle:
+                        size: self.size
+                        pos: self.pos
+
+        # Footer Buttons
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(60)
+            padding: dp(10), dp(0)
+            spacing: dp(10)
+            halign: 'center'
+            valign: 'center'
+
+            Button:
+                text: "Προσθήκη Νέου Πελάτη"
+                size_hint_x: 0.6
+                background_normal: ''
+                background_color: 0.03, 0.37, 0.71, 1
+                color: 1, 1, 1, 1
+                on_release: root.go_to_new_client_screen()
+            Button:
+                text: "Επιστροφή"
+                size_hint_x: 0.4
+                background_normal: ''
+                background_color: 0.8, 0.8, 0.8, 1
+                color: 0, 0, 0, 1
+                on_release: root.go_back()

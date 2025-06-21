@@ -1,1 +1,203 @@
 #:kivy 2.3.1
+# kivy/screens/dashboard.kv
+
+#:import Clock kivy.clock.Clock
+#:import datetime datetime.datetime
+#:import date datetime.date
+#:import timedelta datetime.timedelta
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import ScreenManager kivy.uix.screenmanager
+#:import Screen kivy.uix.screenmanager
+#:import MDTopAppBar kivymd.uix.appbar.MDTopAppBar
+#:import MDLabel kivymd.uix.label.label.MDLabel
+#:import MDButton kivymd.uix.button.button.MDButton
+#:import MDButtonText kivymd.uix.button.button.MDButtonText
+#:import MDIconButton kivymd.uix.button.button.MDIconButton
+#:import MDNavigationLayout kivymd.uix.navigationdrawer.MDNavigationLayout
+#:import MDNavigationDrawer kivymd.uix.navigationdrawer.MDNavigationDrawer
+#:import MDScreen kivymd.uix.screen.MDScreen
+#:import BoxLayout kivy.uix.boxlayout.BoxLayout
+#:import FloatLayout kivy.uix.floatlayout.FloatLayout 
+#:import Animation kivy.animation.Animation
+#:import dp kivy.metrics.dp
+
+<FABMenu>:
+    size_hint: None, None
+    width: dp(56)
+    height: dp(56)
+    opacity: 0
+    disabled: True
+
+    MDIconButton:
+        id: main_fab
+        icon: "plus"
+        pos: root.width - self.width, 0
+        style: "standard"
+        on_release: root.toggle_menu()
+
+    MDBoxLayout:
+        id: menu_items_container
+        orientation: 'vertical'
+        size_hint_y: None
+        height: self.minimum_height
+        spacing: dp(10)
+        padding: dp(10)
+        x: root.width - self.width
+        y: root.height - self.height - dp(10)
+        canvas.before:
+            Color:
+                rgba: 0.95, 0.95, 0.95, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(10)]
+
+        MDButton:
+            style: "elevated"
+            on_release: app.root.get_screen('dashboard_screen').add_appointment_from_fab(); root.toggle_menu()
+            MDButtonText:
+                text: "Νέο Ραντεβού"
+                size_hint_y: None
+                height: dp(48)
+        
+        MDButton:
+            style: "elevated"
+            on_release: app.root.get_screen('dashboard_screen').add_client_from_fab(); root.toggle_menu()
+            MDButtonText:
+                text: "Νέος Πελάτης"
+                size_hint_y: None
+                height: dp(48)
+
+<DashboardScreen>:
+    name: 'dashboard_screen'
+    month_display_label: month_label_id
+
+    BoxLayout:
+        orientation: 'vertical'
+
+        MDNavigationLayout:
+            id: nav_layout
+
+            ScreenManager:
+                id: screen_manager
+
+                Screen:
+                    name: 'main_dashboard_content'
+
+                    BoxLayout:
+                        orientation: 'vertical'
+                        
+                        MDTopAppBar:
+                            id: top_app_bar_id
+                            left_action_items: [["menu", lambda x: nav_layout.toggle_nav_drawer()]]
+                            right_action_items: [["magnify", lambda x: app.root.get_screen('dashboard_screen').open_search_modal()]]
+                            md_bg_color: [0, 0, 0, 1]  # Black background
+                            specific_text_color: [1, 1, 1, 1]  # White text/icons for contrast
+                            
+                            # Center Month Display with Calendar Icon and Dropdown
+                            MDBoxLayout:
+                                size_hint_x: None
+                                width: dp(200)
+                                pos_hint: {'center_x': 0.5}
+                                spacing: dp(5)
+                                MDIconButton:
+                                    icon: "calendar-month"
+                                    on_release: root.open_month_picker()
+                                    theme_icon_color: "Custom"
+                                    icon_color: [1, 1, 1, 1]
+                                MDButton:
+                                    id: month_label_id
+                                    on_release: root.open_month_picker()
+                                    style: "text"
+                                    MDButtonText:
+                                        text: root.current_display_date.strftime("%B").capitalize()
+                                        halign: 'center'
+                                        font_style: 'Title'
+                                        role: 'medium'
+                                        theme_text_color: "Custom"
+                                        text_color: [1, 1, 1, 1]
+                                MDIconButton:
+                                    icon: "chevron-down"
+                                    on_release: root.open_month_picker()
+                                    theme_icon_color: "Custom"
+                                    icon_color: [1, 1, 1, 1]
+
+                        ThreeDayCalendarView:
+                            id: three_day_view
+                            size_hint_y: 1
+                            on_kv_post:
+                                self.app = app
+                                self.dashboard_screen = root 
+
+                        FloatLayout:
+                            size_hint_y: None
+                            height: dp(80)
+                            FABMenu:
+                                id: fab_menu
+                                pos: self.parent.width - self.width - dp(20), dp(20)
+
+            MDNavigationDrawer:
+                id: nav_drawer
+                radius: (0, 16, 16, 0) if self.anchor == "left" else (16, 0, 0, 16)
+                drawer_type: "modal"
+                width: dp(280)
+                on_open: root.animate_drawer_open(self)
+                on_close: root.animate_drawer_close(self)
+
+                MDBoxLayout:
+                    id: nav_drawer_content_box
+                    orientation: 'vertical'
+                    padding: dp(20)
+                    spacing: dp(15)
+                    canvas.before:
+                        Color:
+                            rgba: app.theme_cls.surfaceColor
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+                    # Drawer Header
+                    MDLabel:
+                        text: "Μενού"
+                        font_style: 'H5'
+                        size_hint_y: None
+                        height: dp(50)
+                        theme_text_color: "Primary"
+
+                    # Navigation Items
+                    MDButton:
+                        style: "text"
+                        on_release: app.root.current = 'new_appointment_screen'; nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Νέο Ραντεβού"
+                            theme_text_color: "Primary"
+                    MDButton:
+                        style: "text"
+                        on_release: app.root.current = 'new_client_screen'; nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Νέος Πελάτης"
+                            theme_text_color: "Primary"
+                    MDButton:
+                        style: "text"
+                        on_release: app.root.current = 'clients_screen'; nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Λίστα Πελατών"
+                            theme_text_color: "Primary"
+                    MDButton:
+                        style: "text"
+                        on_release: app.root.current = 'reminders_screen'; nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Ραντεβού Ημέρας / Email / Print"
+                            theme_text_color: "Primary"
+                    MDButton:
+                        style: "text"
+                        on_release: root.show_coming_soon_popup("Αναφορές"); nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Αναφορές"
+                            theme_text_color: "Primary"
+                    MDButton:
+                        style: "text"
+                        on_release: root.show_coming_soon_popup("Ρυθμίσεις"); nav_layout.toggle_nav_drawer()
+                        MDButtonText:
+                            text: "Ρυθμίσεις"
+                            theme_text_color: "Primary"
