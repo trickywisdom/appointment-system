@@ -1,6 +1,7 @@
 #:kivy 2.3.1
 # kivy/screens/dashboard.kv
 
+# Kivy Core Imports
 #:import Clock kivy.clock.Clock
 #:import datetime datetime.datetime
 #:import date datetime.date
@@ -8,6 +9,8 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import ScreenManager kivy.uix.screenmanager
 #:import Screen kivy.uix.screenmanager
+
+# KivyMD Widget Imports
 #:import MDTopAppBar kivymd.uix.appbar.MDTopAppBar
 #:import MDLabel kivymd.uix.label.label.MDLabel
 #:import MDButton kivymd.uix.button.button.MDButton
@@ -18,8 +21,12 @@
 #:import MDScreen kivymd.uix.screen.MDScreen
 #:import BoxLayout kivy.uix.boxlayout.BoxLayout
 #:import FloatLayout kivy.uix.floatlayout.FloatLayout 
+#:import MDTopAppBarLeadingButtonContainer kivymd.uix.appbar.MDTopAppBarLeadingButtonContainer
+#:import MDTopAppBarTitle kivymd.uix.appbar.MDTopAppBarTitle
+#:import MDTopAppBarTrailingButtonContainer kivymd.uix.appbar.MDTopAppBarTrailingButtonContainer
+#:import MDActionTopAppBarButton kivymd.uix.appbar.MDActionTopAppBarButton
 #:import Animation kivy.animation.Animation
-#:import dp kivy.metrics.dp
+#:import Widget kivy.uix.widget.Widget
 
 <FABMenu>:
     size_hint: None, None
@@ -86,42 +93,47 @@
 
                     BoxLayout:
                         orientation: 'vertical'
-                        
+
                         MDTopAppBar:
                             id: top_app_bar_id
-                            left_action_items: [["menu", lambda x: nav_layout.toggle_nav_drawer()]]
-                            right_action_items: [["magnify", lambda x: app.root.get_screen('dashboard_screen').open_search_modal()]]
-                            md_bg_color: [0, 0, 0, 1]  # Black background
-                            specific_text_color: [1, 1, 1, 1]  # White text/icons for contrast
-                            
-                            # Center Month Display with Calendar Icon and Dropdown
-                            MDBoxLayout:
-                                size_hint_x: None
-                                width: dp(200)
-                                pos_hint: {'center_x': 0.5}
-                                spacing: dp(5)
-                                MDIconButton:
+                            type: "small"
+                            size_hint_x: 1
+                            # pos_hint: {"center_x": .5, "center_y": .5}
+                            # size_hint_y: None
+                            # height: dp(56)  # Προσαρμογή εδώ
+                            pos_hint: {"top": 1}
+                            # elevation: 0
+                            # specific_text_color: [1, 1, 1, 1]
+                            # theme_bg_color: "Custom"
+                            # md_bg_color: [0.2, 0.4, 0.8, 1]
+
+                            MDTopAppBarLeadingButtonContainer:
+
+                                MDActionTopAppBarButton:
+                                    icon: "menu"
+                                    # on_release: nav_layout.toggle_nav_drawer()
+                                    on_release: nav_drawer.set_state("toggle")
+
+                            MDTopAppBarTitle:
+                                id: month_label_id
+                                text: root.current_display_date.strftime("%B").capitalize()
+                                halign: "center"
+                                # font_style: "Title"
+                                # role: "small"
+                                theme_font_name: "Custom"
+                                font_name: "dejaVuSans"
+
+                            MDTopAppBarTrailingButtonContainer:
+
+                                MDActionTopAppBarButton:
                                     icon: "calendar-month"
                                     on_release: root.open_month_picker()
-                                    theme_icon_color: "Custom"
-                                    icon_color: [1, 1, 1, 1]
-                                MDButton:
-                                    id: month_label_id
-                                    on_release: root.open_month_picker()
-                                    style: "text"
-                                    MDButtonText:
-                                        text: root.current_display_date.strftime("%B").capitalize()
-                                        halign: 'center'
-                                        font_style: 'Title'
-                                        role: 'medium'
-                                        theme_text_color: "Custom"
-                                        text_color: [1, 1, 1, 1]
-                                MDIconButton:
-                                    icon: "chevron-down"
-                                    on_release: root.open_month_picker()
-                                    theme_icon_color: "Custom"
-                                    icon_color: [1, 1, 1, 1]
+                                      
+                                MDActionTopAppBarButton:
+                                    icon: "magnify"
+                                    on_release: root.open_search_modal()
 
+                        # --- Main Content Area: 3-Day View ---
                         ThreeDayCalendarView:
                             id: three_day_view
                             size_hint_y: 1
@@ -129,75 +141,22 @@
                                 self.app = app
                                 self.dashboard_screen = root 
 
+                        # --- Floating Action Button (FAB) Container ---
                         FloatLayout:
                             size_hint_y: None
                             height: dp(80)
+
                             FABMenu:
                                 id: fab_menu
                                 pos: self.parent.width - self.width - dp(20), dp(20)
 
+            # Navigation Drawer
             MDNavigationDrawer:
                 id: nav_drawer
                 radius: (0, 16, 16, 0) if self.anchor == "left" else (16, 0, 0, 16)
-                drawer_type: "modal"
-                width: dp(280)
-                on_open: root.animate_drawer_open(self)
-                on_close: root.animate_drawer_close(self)
-
+                
                 MDBoxLayout:
                     id: nav_drawer_content_box
                     orientation: 'vertical'
                     padding: dp(20)
                     spacing: dp(15)
-                    canvas.before:
-                        Color:
-                            rgba: app.theme_cls.surfaceColor
-                        Rectangle:
-                            pos: self.pos
-                            size: self.size
-
-                    # Drawer Header
-                    MDLabel:
-                        text: "Μενού"
-                        font_style: 'H5'
-                        size_hint_y: None
-                        height: dp(50)
-                        theme_text_color: "Primary"
-
-                    # Navigation Items
-                    MDButton:
-                        style: "text"
-                        on_release: app.root.current = 'new_appointment_screen'; nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Νέο Ραντεβού"
-                            theme_text_color: "Primary"
-                    MDButton:
-                        style: "text"
-                        on_release: app.root.current = 'new_client_screen'; nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Νέος Πελάτης"
-                            theme_text_color: "Primary"
-                    MDButton:
-                        style: "text"
-                        on_release: app.root.current = 'clients_screen'; nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Λίστα Πελατών"
-                            theme_text_color: "Primary"
-                    MDButton:
-                        style: "text"
-                        on_release: app.root.current = 'reminders_screen'; nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Ραντεβού Ημέρας / Email / Print"
-                            theme_text_color: "Primary"
-                    MDButton:
-                        style: "text"
-                        on_release: root.show_coming_soon_popup("Αναφορές"); nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Αναφορές"
-                            theme_text_color: "Primary"
-                    MDButton:
-                        style: "text"
-                        on_release: root.show_coming_soon_popup("Ρυθμίσεις"); nav_layout.toggle_nav_drawer()
-                        MDButtonText:
-                            text: "Ρυθμίσεις"
-                            theme_text_color: "Primary"

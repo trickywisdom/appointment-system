@@ -1,199 +1,546 @@
 # kivy/screens/dashboard_screen.py
 
-from kivy.uix.screenmanager import Screen
-from kivy.uix.popup import Popup
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.modalview import ModalView
-from kivy.uix.textinput import TextInput
-from kivy.uix.spinner import Spinner
-from kivy.properties import ObjectProperty, StringProperty
-from kivy.clock import Clock
-from kivy.metrics import dp
-from kivy.animation import Animation
-from datetime import datetime, date, timedelta
 from kivy.logger import Logger
+from kivy.uix.screenmanager import Screen
+from kivymd.uix.behaviors import DeclarativeBehavior
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
+from kivy.properties import ObjectProperty, StringProperty, ListProperty, NumericProperty, BooleanProperty
+from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle
+from kivy.clock import Clock
+from kivy.lang import Builder
+from kivy.utils import get_color_from_hex
+from kivy.core.window import Window
+from kivy.uix.floatlayout import FloatLayout
+from kivymd.app import MDApp
+from datetime import datetime, date, timedelta
 
-from models.customer import Customer
+# Imports for modals
+from kivy.uix.popup import Popup
+from kivy.uix.modalview import ModalView
+from kivy.animation import Animation
+from kivy.uix.textinput import TextInput
+
+# KivyMD Imports
+# from kivymd.uix.screen import MDScreen
+# from kivy.uix.screenmanager import Screen
+from kivymd.uix.button import MDButton, MDIconButton, MDFabButton
+from kivymd.uix.button import MDButtonText # Only MDButtonText is needed for composing text
+from kivymd.uix.label import MDLabel
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.navigationdrawer import MDNavigationDrawer, MDNavigationLayout # <-- ADDED THIS LINE (already there, just making sure)
+# from kivymd.uix.navigationdrawer import MDNavigationDrawerHeader
+# from kivymd.uix.navigationdrawer import MDNavigationDrawerItem
+from kivy.uix.widget import Widget 
+
+# Model and custom UI imports
 from models.appointment import Appointment
-from components.three_day_calendar_view import ThreeDayCalendarView
+from models.customer import Customer
 from uix.custom_date_picker import DatePickerPopup
 
+# Builder.load_string for small, contained KV for things like Modal Search
+Builder.load_string("""
+<SearchModal>:
+    size_hint: 1, 1
+    background_color: 0, 0, 0, 0.7
+    orientation: 'vertical'
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: None
+        height: self.minimum_height
+        spacing: dp(10)
+        padding: dp(10)
+        canvas.before:
+            Color:
+                rgba: 0.93, 0.93, 0.93, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            spacing: dp(10)
+            TextInput:
+                id: search_input
+                hint_text: "Αναζήτηση πελάτη (όνομα/τηλέφωνο)"
+                font_size: '18sp'
+                padding: dp(10)
+                multiline: False
+                on_text: root.filter_customers(self.text)
+            MDIconButton:
+                icon: 'close'
+                size_hint_x: None
+                width: dp(48)
+                on_release: root.dismiss()
+                # theme_text_color: 'Custom' # This is for custom palette colors. Not for rgba.
+                # text_color: 1, 1, 1, 1 # <--- REMOVED! Use theme_text_color or specific_text_color if customizing, or let theme handle.
+                md_bg_color: 0.8, 0.2, 0.2, 1 # This is the background color of the button
+        
+        ScrollView:
+            size_hint_y: None
+            height: self.parent.height * 0.7 if self.children else 0
+            do_scroll_y: True
+            GridLayout:
+                id: search_results_grid
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(2)
+                padding: dp(2)
+        
+        MDLabel:
+            id: no_results_label
+            text: "Δεν βρέθηκε ο πελάτης που ψάχνατε."
+            font_style: 'Body'
+            role: 'medium'
+            halign: 'center'
+            valign: 'middle'
+            size_hint_y: None
+            height: dp(0)
+            opacity: 0
+
+        MDButton: # Changed from MDRaisedButton to MDButton with style="elevated"
+            id: new_customer_button
+            MDButtonText: # Text goes inside MDButtonText
+                text: "Δημιουργία Νέου Πελάτη"
+                style: "elevated" # KivyMD 2.x equivalent for a "raised" button
+                size_hint_y: None
+                height: dp(0)
+                opacity: 0
+                on_release: root.create_new_customer()
+                md_bg_color: 0.2, 0.6, 0.2, 1
+                # text_color: 1, 1, 1, 1 # <--- REMOVED! MDButton with style "elevated" handles text color automatically for contrast.
+""")
+
+
 class SearchModal(ModalView):
-    search_results_container = ObjectProperty(None)
-    search_input = ObjectProperty(None)
-
-    def __init__(self, dashboard_screen, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.size_hint = (0.9, 0.7)
-        self.pos_hint = {'center_x': 0.5, 'top': 0.95}
-        self.background_color = [0, 0, 0, 0.5]
-        self.dashboard_screen = dashboard_screen
-        self.customers = Customer.get_all()
-        self.bind(on_open=self.animate_open)
-        self.bind(on_dismiss=self.animate_close)
+        self.auto_dismiss = False
+        self.dashboard_screen = None
 
-    def animate_open(self, *args):
-        self.opacity = 0
-        self.pos_hint = {'center_x': 0.5, 'top': 0.6}
-        anim = Animation(opacity=1, pos_hint={'center_x': 0.5, 'top': 0.95}, duration=0.3, transition='out_quad')
+    def on_open(self):
+        self.y = Window.height
+        anim = Animation(y=0, duration=0.3, transition='out_quad')
         anim.start(self)
+        self.ids.search_input.focus = True
 
-    def animate_close(self, *args):
-        anim = Animation(opacity=0, pos_hint={'center_x': 0.5, 'top': 0.6}, duration=0.2, transition='in_quad')
+    def dismiss(self, *largs, **kwargs):
+        anim = Animation(y=Window.height, duration=0.3, transition='in_quad')
+        anim.bind(on_complete=super().dismiss)
         anim.start(self)
-        return False
+    
+    def filter_customers(self, query):
+        grid = self.ids.search_results_grid
+        grid.clear_widgets()
+        
+        no_results_label = self.ids.no_results_label
+        new_customer_button = self.ids.new_customer_button
 
-    def filter_customers(self, search_text):
-        if not self.search_results_container:
-            Logger.warning("SearchModal: search_results_container is None")
+        no_results_label.height = dp(0)
+        no_results_label.opacity = 0
+        new_customer_button.height = dp(0)
+        new_customer_button.opacity = 0
+        self.ids.search_results_grid.parent.height = 0
+
+        if not query:
             return
 
-        self.search_results_container.clear_widgets()
-        search_text = search_text.lower().strip()
+        all_customers = Customer.get_all()
 
-        if not search_text:
-            self.search_results_container.add_widget(
-                Label(text="Πληκτρολογήστε όνομα ή τηλέφωνο", size_hint_y=None, height=dp(40))
-            )
-            return
+        query = query.lower()
+        
+        found_customers = []
+        for customer in all_customers:
+            if query in customer.first_name.lower() or \
+               query in customer.last_name.lower() or \
+               query in (customer.phone or "").lower():
+                found_customers.append(customer)
+        
+        if found_customers:
+            for customer in found_customers:
+                btn = MDButton( # Changed to MDButton
+                    MDButtonText(text=f"{customer.first_name} {customer.last_name} - {customer.phone or ''}"), # Text now goes inside MDButtonText
+                    style="text", # This makes it a "flat" button in MD3
+                    size_hint_y=None,
+                    height=dp(48),
+                    # halign and valign are properties of MDButtonText inside MDButton
+                    # text_size is also a property of MDButtonText
+                )
+                # Accessing the MDButtonText child to set alignment and text_size
+                if btn.children and isinstance(btn.children[0], MDButtonText):
+                    btn.children[0].halign = 'left'
+                    btn.children[0].valign = 'middle'
+                    btn.children[0].text_size = (grid.width - dp(20), None) # Added some padding
+                
+                btn.customer_id = customer.id
+                btn.bind(on_release=self.select_customer)
+                grid.add_widget(btn)
+            self.ids.search_results_grid.parent.height = min(dp(300), self.ids.search_results_grid.minimum_height) # Max height 300dp
+        else:
+            no_results_label.height = dp(40)
+            no_results_label.opacity = 1
+            new_customer_button.height = dp(48)
+            new_customer_button.opacity = 1
 
-        matching_customers = [
-            c for c in self.customers
-            if search_text in c.full_name.lower() or search_text in c.phone
-        ]
-
-        if not matching_customers:
-            box = BoxLayout(orientation='vertical', size_hint_y=None, height=dp(80))
-            box.add_widget(
-                Label(text="Δεν βρέθηκε ο πελάτης που ψάχνατε.", size_hint_y=None, height=dp(40))
-            )
-            btn = Button(
-                text="Δημιουργία Νέου Πελάτη",
-                size_hint_y=None,
-                height=dp(40),
-                background_color=[0.1, 0.5, 0.8, 1]
-            )
-            btn.bind(on_release=self.create_new_client)
-            box.add_widget(btn)
-            self.search_results_container.add_widget(box)
-            return
-
-        for customer in matching_customers:
-            btn = Button(
-                text=f"{customer.full_name} - {customer.phone}",
-                size_hint_y=None,
-                height=dp(50),
-                background_normal='',
-                background_color=[0.9, 0.9, 0.9, 1]
-            )
-            btn.customer = customer
-            btn.bind(on_release=self.select_customer)
-            self.search_results_container.add_widget(btn)
-
-    def create_new_client(self, instance):
-        self.dismiss()
-        if self.dashboard_screen.manager:
-            self.dashboard_screen.manager.current = 'new_client_screen'
 
     def select_customer(self, instance):
+        customer_id = instance.customer_id
+        if self.dashboard_screen:
+            if self.dashboard_screen.manager.has_screen('new_appointment_screen'):
+                self.dashboard_screen.manager.get_screen('new_appointment_screen').selected_customer_id = customer_id
+                self.dashboard_screen.manager.current = 'new_appointment_screen'
+            else:
+                Logger.warning("SearchModal: 'new_appointment_screen' not found in manager.")
         self.dismiss()
-        if self.dashboard_screen.manager:
-            new_appt_screen = self.dashboard_screen.manager.get_screen('new_appointment_screen')
-            new_appt_screen.customer_spinner.text = instance.customer.full_name
-            self.dashboard_screen.manager.current = 'new_appointment_screen'
 
-class DashboardScreen(Screen):
-    month_display_label = ObjectProperty(None)
-    current_display_date = ObjectProperty(date.today())
+    def create_new_customer(self):
+        if self.dashboard_screen:
+            if self.dashboard_screen.manager.has_screen('new_client_screen'):
+                self.dashboard_screen.manager.current = 'new_client_screen'
+            else:
+                Logger.warning("SearchModal: 'new_client_screen' not found in manager.")
+        self.dismiss()
+
+class FABMenu(FloatLayout):
+    is_open = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.search_modal = None
-        self.date_picker_popup = None
-        self.bind(current_display_date=self.update_calendar_view)
+        # We don't set initial opacity/disabled here, KV handles it.
+        # self.closed_y is not strictly needed if we calculate based on current state.
 
+    def toggle_menu(self):
+        # Access the main FAB button to change its icon
+        main_fab = self.ids.main_fab
+        
+        # Access the container for the menu items
+        menu_content = self.ids.menu_items_container
+
+        # Ensure menu_content's height is correctly calculated before animation
+        menu_content.height = menu_content.minimum_height
+
+        # Define initial FABMenu height (when closed, it's just the FAB's height)
+        # This assumes the main FAB button inside FABMenu has a size of dp(56), dp(56)
+        initial_fab_menu_height = dp(56)
+        
+        # Define the target height for FABMenu when open
+        # This is main FAB height + spacing + menu items height + some bottom padding
+        target_fab_menu_height = initial_fab_menu_height + dp(10) + menu_content.height + dp(10)
+
+        # Define the initial y-position of FABMenu (from the KV's parent FloatLayout)
+        # This needs to match the 'pos: ..., dp(20)' in dashboard.kv for the FABMenu instance.
+        initial_fab_menu_y = dp(20) # This is the y in the parent FloatLayout
+
+        if not self.is_open:
+            # When opening:
+            self.opacity = 1
+            self.disabled = False
+            
+            # Animate FABMenu's height and y-position to slide up
+            anim_fab_menu = Animation(
+                y=initial_fab_menu_y + (target_fab_menu_height - initial_fab_menu_height),
+                height=target_fab_menu_height,
+                duration=0.2,
+                transition='out_quad'
+            )
+            anim_fab_menu.start(self)
+
+            # Change icon for the main FAB button
+            main_fab.icon = "close"
+            
+        else:
+            # When closing:
+            # Animate FABMenu's height and y-position back to initial state
+            anim_fab_menu = Animation(
+                y=initial_fab_menu_y,
+                height=initial_fab_menu_height,
+                opacity=0, # Hide FABMenu
+                duration=0.2,
+                transition='in_quad'
+            )
+            # Disable FABMenu when animation completes (so it doesn't receive touch events when hidden)
+            anim_fab_menu.bind(on_complete=lambda *args: setattr(self, 'disabled', True))
+            anim_fab_menu.start(self)
+            
+            # Change icon back to plus
+            main_fab.icon = "plus"
+            
+        self.is_open = not self.is_open
+
+
+class DashboardScreen(DeclarativeBehavior, Screen): # Συνδυάζουμε MD συμπεριφορά με Screen
+    current_display_date = ObjectProperty(date.today())
+    appointments_data = ListProperty([])
+    month_display_label = ObjectProperty(None)
+    # No longer need to define navigation_drawer as an ObjectProperty here,
+    # as it's directly accessed via self.ids from KV.
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.swipe_start_x = 0
+        self.swipe_threshold = 0.2
+        self.bind(current_display_date=self.on_current_display_date_changed)
+        
     def on_kv_post(self, base_widget):
-        Clock.schedule_once(self.load_initial_data, 0)
+        Logger.info("DashboardScreen: on_kv_post called.")
+        
+        # Pass dashboard_screen reference to three_day_view
+        if 'three_day_view' in self.ids:
+            self.ids.three_day_view.dashboard_screen = self
+            Logger.info("DashboardScreen: DashboardScreen reference passed to three_day_view.")
+        else:
+            Logger.warning("DashboardScreen: 'three_day_view' not found in self.ids after kv_post.")
+        
+        # Ensure month_display_label is an MDLabel instance from KV
+        # This part might need adjustment if month_display_label is defined in dashboard.kv
+        # and you want to ensure it's an MDLabel. Assuming it's already an MDLabel via KV.
+        # If it's a simple Label in KV, change it to MDLabel in dashboard.kv
+        # self.month_display_label refers to the Button with id: month_label_id in KV.
+        # Its text is set via its MDButtonText child.
+        if isinstance(self.month_display_label, Button): # It's a Button in KV!
+            Logger.info("DashboardScreen: month_display_label is a Kivy Button. Attempting to update its text via its child MDButtonText.")
+        
+        self.update_top_bar_month()
 
-    def load_initial_data(self, dt=0):
+    def on_enter(self, *args):
+        Logger.info("DashboardScreen: on_enter called.")
+        self.update_top_bar_month()
         self.load_3_day_appointments()
 
-    def load_3_day_appointments(self):
-        try:
-            start_date = self.current_display_date
-            appointments_data = []
-            day_names = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ']
-            for i in range(3):
-                current_date = start_date + timedelta(days=i)
-                appointments = Appointment.get_by_date(current_date.strftime('%Y-%m-%d'))
-                appt_list = [
-                    {
-                        'id': appt.id,
-                        'customer_name': appt.customer_name,
-                        'service_name': appt.services,
-                        'datetime_obj': appt.datetime,
-                        'duration': appt.duration
-                    }
-                    for appt in appointments
+    def on_current_display_date_changed(self, instance, value):
+        Logger.info(f"DashboardScreen: current_display_date changed to {value}. Reloading appointments.")
+        self.update_top_bar_month()
+        self.load_3_day_appointments()
+
+    def update_top_bar_month(self):
+        if self.month_display_label:
+            # Now `month_display_label` is the MDButton itself.
+            # Its text is inside its MDButtonText child.
+            if hasattr(self.month_display_label, 'children') and self.month_display_label.children:
+                # Assuming MDButtonText is the first child for text-only buttons
+                for child in self.month_display_label.children:
+                    if isinstance(child, MDButtonText):
+                        child.text = self.current_display_date.strftime("%B").capitalize()
+                        Logger.info(f"DashboardScreen: Top bar month updated to {child.text} via MDButtonText.")
+                        return
+            Logger.warning("DashboardScreen: Could not find MDButtonText child for month_display_label to update text.")
+            # Fallback if MDButtonText not found, though ideally not needed for MDButton
+            self.month_display_label.text = self.current_display_date.strftime("%B").capitalize()
+
+
+    def open_nav_drawer(self):
+        Logger.info("DashboardScreen: Opening Navigation Drawer")
+        self.ids.nav_layout.toggle_nav_drawer()
+        # Access the MDNavigationLayout (not the drawer directly)
+        if 'nav_layout' in self.ids:
+            nav_layout = self.ids.nav_layout
+            drawer_content_box = self.ids.nav_drawer_content_box
+            
+            # Populate content only once (if empty)
+            if not drawer_content_box.children:
+                # Title "Menu"
+                drawer_content_box.add_widget(MDLabel(
+                    text="Μενού",
+                    font_style="Title",
+                    role="large",
+                    halign='center',
+                    size_hint_y=None,
+                    height=dp(50),
+                    theme_text_color="Custom",
+                    text_color=MDApp.get_running_app().theme_cls.onPrimaryColor
+                ))
+
+                # Menu items
+                menu_items = [
+                    ("Νέο Ραντεβού", 'new_appointment_screen'),
+                    ("Νέος Πελάτης", 'new_client_screen'),
+                    ("Λίστα Πελατών", 'clients_screen'),
+                    ("Ραντεβού Ημέρας / Email / Print", 'reminders_screen'),
+                    ("Αναφορές", None),
+                    ("Ρυθμίσεις", None)
                 ]
-                appointments_data.append({
-                    'date': current_date,
-                    'day_name': day_names[current_date.weekday()],
-                    'day_number': current_date.day,
-                    'appointments': appt_list
-                })
-            if self.ids.three_day_view:
-                self.ids.three_day_view.appointments_data = appointments_data
-            else:
-                Logger.warning("DashboardScreen: three_day_view not found in ids")
-        except Exception as e:
-            Logger.error(f"DashboardScreen: Error loading appointments: {e}")
-            self.show_popup("Σφάλμα", f"Αποτυχία φόρτωσης ραντεβού: {e}")
 
-    def update_calendar_view(self, instance, value):
-        self.load_3_day_appointments()
+                for text, screen_name in menu_items:
+                    btn = MDButton(
+                        MDButtonText(text=text),
+                        style="text",  # Αυτό δημιουργεί flat button
+                        size_hint_y=None,
+                        height=dp(50),
+                        theme_text_color="Custom",
+                        text_color=MDApp.get_running_app().theme_cls.onSurfaceColor
+                    )
+                    if screen_name:
+                        btn.bind(on_release=lambda x, sn=screen_name: self.change_screen_and_dismiss_drawer(nav_layout, sn))
+                    else:
+                        btn.bind(on_release=lambda x: self.show_popup("Λειτουργία", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα."))
+                    drawer_content_box.add_widget(btn)
 
-    def open_search_modal(self):
-        if not self.search_modal:
-            self.search_modal = SearchModal(dashboard_screen=self)
-        self.search_modal.open()
+                # Spacer
+                drawer_content_box.add_widget(Widget(size_hint_y=1))
+
+            # Toggle the drawer state
+            nav_layout.toggle_nav_drawer()
+        else:
+            Logger.error("DashboardScreen: MDNavigationLayout with ID 'nav_layout' not found")
+
+
+    def change_screen_and_dismiss_drawer(self, nav_layout, screen_name):
+        # Change screen
+        self.manager.current = screen_name
+        # Close drawer
+        if hasattr(nav_layout, 'toggle_nav_drawer'):
+            nav_layout.toggle_nav_drawer()
 
     def open_month_picker(self):
-        if not self.date_picker_popup:
-            self.date_picker_popup = DatePickerPopup(target_screen=self)
-        self.date_picker_popup.selected_date = self.current_display_date
-        self.date_picker_popup.open()
+        Logger.info("DashboardScreen: Opening Month Picker.")
+        picker = DatePickerPopup(target_screen=self)
+        picker.current_date = self.current_display_date
+        picker.open()
+        
+    def update_date_from_picker(self, new_date):
+        Logger.info(f"DashboardScreen: Date selected from picker: {new_date}.")
+        self.current_display_date = new_date
 
-    def update_date_from_picker(self, selected_date):
-        self.current_display_date = selected_date
+    def increment_display_date(self, days=3):
+        self.current_display_date += timedelta(days=days)
 
-    def animate_drawer_open(self, drawer):
-        drawer.opacity = 0
-        drawer.x = -drawer.width
-        anim = Animation(opacity=1, x=0, duration=0.3, transition='out_quad')
-        anim.start(drawer)
+    def decrement_display_date(self, days=3):
+        self.current_display_date -= timedelta(days=days)
 
-    def animate_drawer_close(self, drawer):
-        anim = Animation(opacity=0, x=-drawer.width, duration=0.2, transition='in_quad')
-        anim.start(drawer)
+    def open_search_modal(self):
+        Logger.info("DashboardScreen: Opening Search Modal.")
+        search_modal = SearchModal()
+        search_modal.dashboard_screen = self
+        search_modal.open()
 
     def add_appointment_from_fab(self):
-        if self.manager:
-            self.manager.current = 'new_appointment_screen'
+        Logger.info("DashboardScreen: Navigating to New Appointment Screen from FAB.")
+        self.manager.current = 'new_appointment_screen'
 
     def add_client_from_fab(self):
-        if self.manager:
-            self.manager.current = 'new_client_screen'
+        Logger.info("DashboardScreen: Navigating to New Client Screen from FAB.")
+        self.manager.current = 'new_client_screen'
+
+    def load_3_day_appointments(self):
+        Logger.info(f"DashboardScreen: Loading 3-day appointments starting from {self.current_display_date}.")
+        
+        start_date = self.current_display_date
+        three_days_data = []
+            
+        all_appointments = Appointment.get_all()
+
+        for i in range(3):
+            day_date = start_date + timedelta(days=i)
+            day_appointments_list = []
+            
+            for appt in all_appointments:
+                if isinstance(appt.datetime, datetime) and appt.datetime.date() == day_date:
+                    customer_name = appt.customer_name if appt.customer_name else "Άγνωστος Πελάτης"
+                    
+                    day_appointments_list.append({
+                        'id': appt.id,
+                        'datetime_obj': appt.datetime,
+                        'start_time': appt.datetime.strftime('%H:%M'),
+                        'end_time': (appt.datetime + timedelta(minutes=appt.duration)).strftime('%H:%M'),
+                        'customer_name': customer_name,
+                        'service_name': appt.services if appt.services and appt.services != "None" else "Δεν ορίστηκε υπηρεσία",
+                        'duration': appt.duration
+                    })
+            
+            day_appointments_list.sort(key=lambda x: x['datetime_obj'])
+            
+            three_days_data.append({
+                'date': day_date,
+                'day_name': self.get_day_name_in_greek(day_date.weekday()),
+                'day_number': day_date.day,
+                'appointments': day_appointments_list
+            })
+        
+        if 'three_day_view' in self.ids:
+            self.ids.three_day_view.appointments_data = three_days_data
+            Logger.info(f"DashboardScreen: Sent {len(three_days_data)} days of data to three_day_view.")
+        else:
+            Logger.error("DashboardScreen: 'three_day_view' ID not found in DashboardScreen. Cannot update calendar.")
+
+
+    def get_day_name_in_greek(self, weekday_int):
+        day_names = ["Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή"]
+        return day_names[weekday_int]
 
     def show_popup(self, title, message):
-        popup = Popup(
+        # Now using MDDialog for consistency
+        dialog = MDDialog(
             title=title,
-            content=Label(text=message, halign='center', valign='middle'),
-            size_hint=(None, None), size=(dp(400), dp(200))
+            text=message,
+            buttons=[
+                MDButton( # Changed to MDButton
+                    MDButtonText(text="OK"), # Text goes inside MDButtonText
+                    style="text", # This gives it the "flat" button appearance
+                    on_release=lambda x: dialog.dismiss()
+                )
+            ],
         )
-        popup.open()
+        dialog.open()
+    
+    def on_touch_down(self, touch):
+        if 'three_day_view' in self.ids and self.ids.three_day_view.collide_point(*touch.pos):
+            self._touch_down_pos = touch.pos
+            return True
+        return super().on_touch_down(touch)
 
-    def show_coming_soon_popup(self, feature):
-        self.show_popup("Υπό Κατασκευή", f"Η λειτουργία '{feature}' δεν είναι ακόμα διαθέσιμη.")
+    def on_touch_up(self, touch):
+        if hasattr(self, '_touch_down_pos'):
+            if 'three_day_view' in self.ids and self.ids.three_day_view.collide_point(*touch.pos):
+                dx = touch.x - self._touch_down_pos[0]
+                if abs(dx) > dp(50) and abs(touch.y - self._touch_down_pos[1]) < dp(50):
+                    if dx > 0:
+                        Logger.info("DashboardScreen: Swipe Right detected.")
+                        self.current_display_date -= timedelta(days=3)
+                    else:
+                        Logger.info("DashboardScreen: Swipe Left detected.")
+                        self.current_display_date += timedelta(days=3)
+                del self._touch_down_pos
+                return True
+        return super().on_touch_up(touch)
+
+    def show_appointment_details_popup(self, appointment_id):
+        Logger.info(f"DashboardScreen: Showing details for appointment ID: {appointment_id}")
+        appointment = Appointment.get_by_id(appointment_id)
+        if appointment:
+            customer_name = appointment.customer_name if appointment.customer_name else "Άγνωστος Πελάτης"
+            service_name = appointment.services if appointment.services and appointment.services != "None" else "Δεν ορίστηκε υπηρεσία"
+
+            popup_content = f"Πελάτης: {customer_name}\n" \
+                            f"Υπηρεσία: {service_name}\n" \
+                            f"Ώρα: {appointment.datetime.strftime('%H:%M')} - {(appointment.datetime + timedelta(minutes=appointment.duration)).strftime('%H:%M')}\n" \
+                            f"Σημειώσεις: {appointment.notes or 'Καμία'}"
+            
+            # Using MDDialog for appointment details popup
+            # Create content as a separate widget to pass to content_cls
+            content_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
+            content_layout.add_widget(MDLabel(text=popup_content, halign='left', valign='top', text_size=(dp(380), None), font_style='Body', role='medium'))
+            
+            # Button for the dialog. Use MDButton with style="text" for flat appearance inside dialogs
+            btn_close = MDButton( # Changed from MDFlatButton to MDButton
+                MDButtonText(text='Κλείσιμο'), # Text goes inside MDButtonText
+                style="text" # This gives it the "flat" button appearance
+            )
+
+            dialog = MDDialog(
+                title='Λεπτομέρειες Ραντεβού',
+                type="custom", # Use "custom" type to put your own content
+                content_cls=content_layout, # Pass the BoxLayout directly as content_cls
+                buttons=[btn_close] # Buttons go here if not part of content_cls
+            )
+            btn_close.bind(on_release=dialog.dismiss)
+            dialog.open()
+        else:
+            Logger.warning(f"Appointment with ID {appointment_id} not found.")
