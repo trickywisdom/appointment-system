@@ -9,6 +9,9 @@
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import ScreenManager kivy.uix.screenmanager
 #:import Screen kivy.uix.screenmanager
+#:import dp kivy.metrics.dp
+#:import Animation kivy.animation.Animation
+#:import Widget kivy.uix.widget.Widget
 
 # KivyMD Widget Imports
 #:import MDTopAppBar kivymd.uix.appbar.MDTopAppBar
@@ -25,8 +28,7 @@
 #:import MDTopAppBarTitle kivymd.uix.appbar.MDTopAppBarTitle
 #:import MDTopAppBarTrailingButtonContainer kivymd.uix.appbar.MDTopAppBarTrailingButtonContainer
 #:import MDActionTopAppBarButton kivymd.uix.appbar.MDActionTopAppBarButton
-#:import Animation kivy.animation.Animation
-#:import Widget kivy.uix.widget.Widget
+
 
 <FABMenu>:
     size_hint: None, None
@@ -80,6 +82,7 @@
     month_display_label: month_label_id
 
     BoxLayout:
+        id: main_content
         orientation: 'vertical'
 
         MDNavigationLayout:
@@ -112,7 +115,8 @@
                                 MDActionTopAppBarButton:
                                     icon: "menu"
                                     # on_release: nav_layout.toggle_nav_drawer()
-                                    on_release: nav_drawer.set_state("toggle")
+                                    # on_release: nav_drawer.set_state("toggle")
+                                    on_release: root.open_nav_drawer()
 
                             MDTopAppBarTitle:
                                 id: month_label_id
@@ -154,9 +158,149 @@
             MDNavigationDrawer:
                 id: nav_drawer
                 radius: (0, 16, 16, 0) if self.anchor == "left" else (16, 0, 0, 16)
-                
-                MDBoxLayout:
+                # on_state: root.on_drawer_state_change(self.state)
+                # on_open: root.animate_drawer_content()
+                drawer_type: "modal"  # Εξασφαλίζει ότι είναι modal
+                close_on_click: True  # Κλείνει όταν πατάς στο scrim
+                scrim_color: 0, 0, 0, 0.5  # Ημιδιαφανές scrim
+                on_state: root.on_drawer_state_change(self.state)
+
+                MDNavigationDrawerMenu:
                     id: nav_drawer_content_box
-                    orientation: 'vertical'
-                    padding: dp(20)
-                    spacing: dp(15)
+                    # adaptive_height: True
+                    # padding: dp(20)
+                    # spacing: dp(15)
+                    # size_hint_y: None
+                    # size_hint_y: 0.8
+                    # height: dp(800)
+
+                    MDLabel:
+                        text: "Μενού"
+                        font_style: "Title"
+                        role: "large"
+                        halign: "center"
+                        size_hint_y: None
+                        height: dp(50)
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primaryColor
+
+                    MDButton:
+                        id: new_appointment_btn
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'new_appointment_screen')      
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Νέο Ραντεβού"
+                            theme_text_color: "Custom"
+                            text_color: "000000"
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+
+                    MDButton:
+                        id: new_client_btn
+                        # size_hint_x: .5
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        # on_release: root.change_screen_and_dismiss_drawer('new_client_screen')
+                        # on_release: root.printme()
+                        on_release: print("Button clicked")      
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Νέος Πελάτης"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.onSurfaceColor
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+                        
+                    MDButton:
+                        pos_hint: {"center_x": .5, "center_y": .5}
+                        on_release: nav_drawer.set_state("toggle")
+
+                        MDButtonText:
+                            text: "Open Drawer"
+
+                    MDButton:
+                        id: clients_list_btn
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'clients_screen')      
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Λίστα Πελατών"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.onSurfaceColor
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+
+                    MDButton:
+                        id: daily_appointments_btn
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'reminders_screen')      
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Ραντεβού Ημέρας / Email / Print"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.onSurfaceColor
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+                
+                    # MDBoxLayout:
+                    #     id: nav_drawer_content_box
+                    #     orientation: 'vertical'
+                    #     padding: dp(20)
+                    #     spacing: dp(15)
+                    #     canvas.before:
+                    #         Color:
+                    #             rgba: 0.98, 0.98, 0.98, 1
+                    #         Rectangle:
+                    #             pos: self.pos
+                    #             size: self.size
+
+                    MDButton:
+                        id: reports_btn
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.root.get_screen('dashboard_screen').show_popup("Αναφορές", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Αναφορές"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.onSurfaceColor
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+
+                    MDButton:
+                        id: settings_btn
+                        style: "text"
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.root.get_screen('dashboard_screen').show_popup("Ρυθμίσεις", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
+                        MDButtonIcon:
+                            icon: ""        
+                        MDButtonText:
+                            text: "Ρυθμίσεις"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.onSurfaceColor
+                            theme_font_name: "Custom"
+                            font_name: "dejaVuSans"
+                            pos_hint: {"center_x": .5, "center_y": .5}
+                            
+                    # Widget:
+                    #     size_hint_y: 1
