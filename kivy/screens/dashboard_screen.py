@@ -22,6 +22,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivymd.app import MDApp
 from datetime import datetime, date, timedelta
 from kivy.animation import Animation
+from kivy.uix.widget import Widget
 
 # Imports for modals
 from kivy.uix.popup import Popup
@@ -35,12 +36,19 @@ from kivy.uix.textinput import TextInput
 from kivymd.uix.button import MDButton, MDIconButton, MDFabButton
 from kivymd.uix.button import MDButtonText # Only MDButtonText is needed for composing text
 from kivymd.uix.label import MDLabel
-from kivymd.uix.dialog import MDDialog
+from kivymd.uix.dialog import (
+    MDDialog,
+    MDDialogIcon,
+    MDDialogHeadlineText,
+    MDDialogSupportingText,
+    MDDialogContentContainer,
+    MDDialogButtonContainer,
+)
+from kivymd.uix.widget import MDWidget
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.navigationdrawer import MDNavigationDrawer, MDNavigationLayout # <-- ADDED THIS LINE (already there, just making sure)
 # from kivymd.uix.navigationdrawer import MDNavigationDrawerHeader
 # from kivymd.uix.navigationdrawer import MDNavigationDrawerItem
-from kivy.uix.widget import Widget 
 
 # Model and custom UI imports
 from models.appointment import Appointment
@@ -419,19 +427,10 @@ class DashboardScreen(DeclarativeBehavior, Screen): # Συνδυάζουμε MD 
             #     Logger.info("DashboardScreen: Main content enabled")
 
     def change_screen_and_dismiss_drawer(self, screen_name):
-        print(f"IDS: {self.ids.keys()}")
-        print("hello1")
+        app = MDApp.get_running_app()
+        app.root.current = screen_name
         print(f"Switching to screen: {screen_name}")
-        print(f"Available screens: {[screen.name for screen in self.ids.screen_manager.screens]}")
-        self.ids.screen_manager.current = screen_name
-        if 'nav_layout' in self.ids:
-            self.ids.nav_layout.toggle_nav_drawer()
-            # self.ids.three_day_view.disabled = False
-            # self.ids.nav_drawer.set_state("close")
-            print("hello2")
-    
-    # def printme(self):
-    #     print("Hello3")
+        self.ids.nav_drawer.set_state("close")
 
     def open_month_picker(self):
         Logger.info("DashboardScreen: Opening Month Picker.")
@@ -510,17 +509,29 @@ class DashboardScreen(DeclarativeBehavior, Screen): # Συνδυάζουμε MD 
         return day_names[weekday_int]
 
     def show_popup(self, title, message):
-        # Now using MDDialog for consistency
         dialog = MDDialog(
-            title=title,
-            text=message,
-            buttons=[
-                MDButton( # Changed to MDButton
-                    MDButtonText(text="OK"), # Text goes inside MDButtonText
-                    style="text", # This gives it the "flat" button appearance
-                    on_release=lambda x: dialog.dismiss()
-                )
-            ],
+            # ----------------------------Icon-----------------------------
+            MDDialogIcon(
+                icon="information-variant",
+            ),
+            # -----------------------Headline text-------------------------
+            MDDialogHeadlineText(
+                text=title,
+            ),
+            # -----------------------Supporting text-----------------------
+            MDDialogSupportingText(
+                text=message,
+            ),
+            # ---------------------Button container------------------------
+            MDDialogButtonContainer(
+                MDWidget(),
+                MDButton(
+                    MDButtonText(text="OK"),
+                    style="text",
+                    on_release=lambda x: dialog.dismiss(),
+                ),
+            ),
+            # -------------------------------------------------------------
         )
         dialog.open()
     

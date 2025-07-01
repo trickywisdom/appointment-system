@@ -189,7 +189,7 @@
                         style: "text"
                         size_hint_y: None
                         height: dp(50)
-                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'new_appointment_screen')      
+                        on_release: root.change_screen_and_dismiss_drawer('new_appointment_screen')      
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
@@ -208,7 +208,7 @@
                         height: dp(50)
                         # on_release: root.change_screen_and_dismiss_drawer('new_client_screen')
                         # on_release: root.printme()
-                        on_release: print("Button clicked")      
+                        on_release: root.change_screen_and_dismiss_drawer('new_appointment_screen')      
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
@@ -218,20 +218,13 @@
                             theme_font_name: "Custom"
                             font_name: "dejaVuSans"
                             pos_hint: {"center_x": .5, "center_y": .5}
-                        
-                    MDButton:
-                        pos_hint: {"center_x": .5, "center_y": .5}
-                        on_release: nav_drawer.set_state("toggle")
-
-                        MDButtonText:
-                            text: "Open Drawer"
 
                     MDButton:
                         id: clients_list_btn
                         style: "text"
                         size_hint_y: None
                         height: dp(50)
-                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'clients_screen')      
+                        on_release: root.change_screen_and_dismiss_drawer('clients_screen')      
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
@@ -247,7 +240,7 @@
                         style: "text"
                         size_hint_y: None
                         height: dp(50)
-                        on_release: app.root.get_screen('dashboard_screen').change_screen_and_dismiss_drawer(nav_layout, 'reminders_screen')      
+                        on_release: root.change_screen_and_dismiss_drawer('reminders_screen')    
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
@@ -275,7 +268,7 @@
                         style: "text"
                         size_hint_y: None
                         height: dp(50)
-                        on_release: app.root.get_screen('dashboard_screen').show_popup("Αναφορές", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
+                        on_release: root.show_popup("Αναφορές", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
@@ -291,7 +284,7 @@
                         style: "text"
                         size_hint_y: None
                         height: dp(50)
-                        on_release: app.root.get_screen('dashboard_screen').show_popup("Ρυθμίσεις", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
+                        on_release: root.show_popup("Ρυθμίσεις", "Αυτή η λειτουργία δεν είναι διαθέσιμη ακόμα.")   
                         MDButtonIcon:
                             icon: ""        
                         MDButtonText:
