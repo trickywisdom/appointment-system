@@ -1,5 +1,12 @@
 
 import sqlite3
+from datetime import datetime, timedelta
+
+
+class AppointmentOverlapError(Exception):
+    """Σφάλμα όταν ένα ραντεβού επικαλύπτεται χρονικά με υπάρχον ραντεβού"""
+    pass
+
 
 class Customer:
     def __init__(self, first_name, last_name, phone, email, id=None):
@@ -118,6 +125,16 @@ class Appointment:
 
     def save_to_db(self, id=None):
     # Αποθηκεύει ή ενημερώνει το ραντεβού στη βάση δεδομένων βάσει του id
+        # Έλεγχος επικάλυψης πριν την αποθήκευση. Το id εξαιρείται από τον έλεγχο,
+        # ώστε το update ενός ραντεβού να μην συγκρούεται με τον παλιό εαυτό του.
+        conflict = Appointment.find_overlap(self.datetime, self.duration, exclude_id=id)
+        if conflict:
+            start_dt = datetime.strptime(conflict.datetime, "%Y-%m-%d %H:%M")
+            end_dt = start_dt + timedelta(minutes=int(conflict.duration))
+            raise AppointmentOverlapError(
+                f"Η ώρα είναι κατειλημμένη: υπάρχει ήδη ραντεβού "
+                f"{start_dt.strftime('%H:%M')}-{end_dt.strftime('%H:%M')} ({conflict.customer_name})."
+            )
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()
@@ -142,6 +159,27 @@ class Appointment:
         except Exception as e:
             print(f"Error retrieving customer by ID: {e}")
             raise e
+
+    @staticmethod
+    def find_overlap(datetime_str, duration, exclude_id=None):
+        """
+        Ελέγχει αν το διάστημα [datetime_str, datetime_str + duration) επικαλύπτεται
+        με υπάρχον ραντεβού της ίδιας ημέρας. Επιστρέφει το πρώτο ραντεβού που
+        επικαλύπτεται, αλλιώς None. Το exclude_id εξαιρεί ένα ραντεβού από τον
+        έλεγχο (χρήσιμο κατά το update, για να μην συγκρούεται με τον εαυτό του).
+        """
+        new_start = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+        new_end = new_start + timedelta(minutes=int(duration))
+
+        for appt in Appointment.get_by_date(new_start.date().isoformat()):
+            if exclude_id is not None and appt.id == exclude_id:
+                continue
+            start = datetime.strptime(appt.datetime, "%Y-%m-%d %H:%M")
+            end = start + timedelta(minutes=int(appt.duration))
+            # Δύο διαστήματα επικαλύπτονται όταν το καθένα ξεκινά πριν τελειώσει το άλλο
+            if new_start < end and start < new_end:
+                return appt
+        return None
 
     @staticmethod
     def delete_from_db(appointment_id):

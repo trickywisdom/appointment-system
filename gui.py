@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk, PhotoImage
 import database
 import models
-from models import Customer, Appointment
+from models import Customer, Appointment, AppointmentOverlapError
 from tkcalendar import DateEntry
 from tkcalendar import Calendar
 from datetime import datetime, timedelta
@@ -1243,18 +1243,20 @@ class NewAppointPage(tk.Frame):
 
         unavailable = set()
 
-        if self.appoint_date.get():
-            
-            date_str = self.appoint_date.get()
+        # Διαβάζουμε το πεδίο μία φορά - μπορεί να είναι κενό (π.χ. καθαρίζεται όταν επιλεγεί κλειστή ημέρα)
+        date_str = self.appoint_date.get()
+
+        if date_str:
             date_obj = datetime.strptime(date_str, "%d-%m-%Y")
             date_iso = date_obj.date().isoformat()
 
             if date_obj.weekday() in [6, 0]:
-                if datetime.today().date() != date_obj:
+                if datetime.today().date() != date_obj.date():
                     messagebox.showerror("Μη διαθέσιμη ημέρα", f"Το κομμωτήριο είναι κλειστό Κυριακές και Δευτέρες.\nΠαρακαλώ επιλέξτε άλλη ημέρα.")
-                self.appoint_date.delete(0, 'end') 
+                self.appoint_date.delete(0, 'end')
+                date_str = ""  # το πεδίο καθαρίστηκε - δεν υπάρχει πλέον έγκυρη ημερομηνία
 
-            appointments_of_day = Appointment.get_by_date(date_iso)
+            appointments_of_day = Appointment.get_by_date(date_iso) if date_str else []
             
             for app in appointments_of_day:
                 dt_obj = datetime.strptime(app.datetime, "%Y-%m-%d %H:%M")
@@ -1483,8 +1485,13 @@ class NewAppointPage(tk.Frame):
             return
 
         appoint_date = self.appoint_date.get()
-        # Το μετατρέπεις σε datetime object
-        date_obj = datetime.strptime(appoint_date, "%d-%m-%Y") # μετατροπή σε datetime object
+        # Το μετατρέπεις σε datetime object - το πεδίο μπορεί να είναι κενό ή άκυρο
+        # (π.χ. καθαρίστηκε από τον έλεγχο κλειστής ημέρας στην get_time_options)
+        try:
+            date_obj = datetime.strptime(appoint_date, "%d-%m-%Y") # μετατροπή σε datetime object
+        except ValueError:
+            messagebox.showerror("Σφάλμα", "Επιλέξτε έγκυρη ημερομηνία για το ραντεβού.")
+            return
         appoint_date = date_obj.date().isoformat() # μετατροπή σε isoformat string
 
         time_dropdown = self.time_dropdown.get()
@@ -1518,6 +1525,10 @@ class NewAppointPage(tk.Frame):
             try:
                 appointment = Appointment(selected_id, datetime_str, service_dropdown, duration, notes)
                 appointment.save_to_db(id) # IF ALREADY EXISTS WE UPDATE
+            except AppointmentOverlapError as e:
+                messagebox.showerror("Σφάλμα", f"{e}\nΕπιλέξτε άλλη ώρα.")
+                self.get_time_options() # ανανέωση των διαθέσιμων ωρών με βάση την τρέχουσα κατάσταση της βάσης
+                return
             except Exception as e:
                 messagebox.showerror("Σφάλμα", "Όλα τα πεδία πρέπει να συμπληρωθούν σωστά")
                 print("Παρουσιάστηκε σφάλμα", f"{e}")

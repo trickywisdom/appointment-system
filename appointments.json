@@ -1,0 +1,506 @@
+[
+    {
+        "customer_id": 1,
+        "datetime": "2025-05-28 10:00",
+        "duration": 20,
+        "id": 1,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-05-29 10:00",
+        "duration": 20,
+        "id": 4,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-05-29 18:40",
+        "duration": 60,
+        "id": 6,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-05-30 11:20",
+        "duration": 40,
+        "id": 8,
+        "notes": "Σημείωση για βάψιμο",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-05-27 10:00",
+        "duration": 60,
+        "id": 10,
+        "notes": "Έχει ζητήσει για το καινούργιο ΤΝ ψαλίδι",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-19 11:20",
+        "duration": 20,
+        "id": 12,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-20 10:00",
+        "duration": 20,
+        "id": 13,
+        "notes": "a a a ",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-15 13:00",
+        "duration": 20,
+        "id": 14,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-25 10:00",
+        "duration": 20,
+        "id": 15,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-04-28 10:00",
+        "duration": 20,
+        "id": 16,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-29 19:40",
+        "duration": 20,
+        "id": 17,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-29 10:00",
+        "duration": 20,
+        "id": 18,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-01 10:00",
+        "duration": 20,
+        "id": 19,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-01 18:20",
+        "duration": 20,
+        "id": 21,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-06 10:00",
+        "duration": 20,
+        "id": 22,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-10 10:00",
+        "duration": 20,
+        "id": 23,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-08 10:00",
+        "duration": 20,
+        "id": 24,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-07 12:00",
+        "duration": 20,
+        "id": 25,
+        "notes": "Μια μικρή σημείωση φφσδασφ ασδφσαδ σδαφασδφ αδσφσδαφ ασδδφσδαφ δσφδαφ σδαφφ ασδφ",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-29 13:00",
+        "duration": 40,
+        "id": 26,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-04 10:00",
+        "duration": 20,
+        "id": 27,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-10 10:00",
+        "duration": 20,
+        "id": 28,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-05-09 13:00",
+        "duration": 20,
+        "id": 30,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-08 11:40",
+        "duration": 20,
+        "id": 31,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-02 14:00",
+        "duration": 60,
+        "id": 37,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-05-27 10:00",
+        "duration": 20,
+        "id": 38,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-02 16:00",
+        "duration": 60,
+        "id": 39,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-06-02 18:00",
+        "duration": 40,
+        "id": 40,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-01 18:00",
+        "duration": 20,
+        "id": 41,
+        "notes": "κούρεμα!",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-01 18:40",
+        "duration": 20,
+        "id": 42,
+        "notes": "Χτένισμα!",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-03 10:00",
+        "duration": 60,
+        "id": 43,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-01 12:20",
+        "duration": 60,
+        "id": 45,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-01 10:00",
+        "duration": 20,
+        "id": 48,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-06-03 12:00",
+        "duration": 40,
+        "id": 50,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-04 14:20",
+        "duration": 60,
+        "id": 51,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-06-04 17:00",
+        "duration": 20,
+        "id": 52,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-04 18:00",
+        "duration": 60,
+        "id": 53,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-05 11:00",
+        "duration": 40,
+        "id": 54,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-02 10:20",
+        "duration": 20,
+        "id": 55,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-02 10:40",
+        "duration": 20,
+        "id": 56,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 8,
+        "datetime": "2025-06-02 13:40",
+        "duration": 40,
+        "id": 61,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 12,
+        "datetime": "2025-06-02 13:20",
+        "duration": 40,
+        "id": 62,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-06-03 10:00",
+        "duration": 20,
+        "id": 63,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 14,
+        "datetime": "2025-06-03 10:40",
+        "duration": 40,
+        "id": 65,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-03 11:00",
+        "duration": 40,
+        "id": 66,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-05 16:00",
+        "duration": 20,
+        "id": 68,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-04 10:40",
+        "duration": 40,
+        "id": 70,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-06 11:40",
+        "duration": 40,
+        "id": 78,
+        "notes": "Σημείωση!@!",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 20,
+        "datetime": "2025-06-10 18:00",
+        "duration": 20,
+        "id": 81,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 21,
+        "datetime": "2025-06-10 18:40",
+        "duration": 20,
+        "id": 82,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 1,
+        "datetime": "2025-06-10 10:00",
+        "duration": 20,
+        "id": 83,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 22,
+        "datetime": "2025-06-11 10:00",
+        "duration": 40,
+        "id": 84,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 22,
+        "datetime": "2025-06-11 10:40",
+        "duration": 40,
+        "id": 85,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 22,
+        "datetime": "2025-06-11 11:20",
+        "duration": 40,
+        "id": 89,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 22,
+        "datetime": "2025-06-11 12:00",
+        "duration": 40,
+        "id": 90,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-11 12:40",
+        "duration": 40,
+        "id": 91,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-11 13:20",
+        "duration": 40,
+        "id": 92,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-11 14:00",
+        "duration": 40,
+        "id": 93,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 22,
+        "datetime": "2025-06-11 14:40",
+        "duration": 40,
+        "id": 94,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 3,
+        "datetime": "2025-06-11 16:00",
+        "duration": 60,
+        "id": 96,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 23,
+        "datetime": "2025-06-11 17:00",
+        "duration": 20,
+        "id": 97,
+        "notes": "",
+        "services": "Χτένισμα"
+    },
+    {
+        "customer_id": 4,
+        "datetime": "2025-06-11 17:20",
+        "duration": 40,
+        "id": 98,
+        "notes": "",
+        "services": "Κούρεμα"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-12 18:00",
+        "duration": 60,
+        "id": 99,
+        "notes": "",
+        "services": "Βάψιμο"
+    },
+    {
+        "customer_id": 2,
+        "datetime": "2025-06-17 13:00",
+        "duration": 40,
+        "id": 100,
+        "notes": "",
+        "services": "Κούρεμα"
+    }
+]
