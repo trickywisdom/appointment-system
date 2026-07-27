@@ -71,7 +71,7 @@ class MainApp(tk.Tk):
             self.iconphoto(False, self.favicon)
         except:
             print("Πρόβλημα με την φόρτωση εικόνας favicon.png")
-            favicon = None
+            self.favicon = None  # πρέπει να οριστεί στο instance: τα popups το ελέγχουν
 
         # Header
         self.header = tk.Frame(self, bg="#2196F3", height=40)
@@ -743,7 +743,8 @@ class DashboardPage(tk.Frame):
         self.scrollbar.place_forget()
         self.newclient_btn.place_forget()
 
-        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
+        if self.controller.favicon: # αν λείπει η εικόνα, το popup ανοίγει με το default εικονίδιο
+            popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup
@@ -795,7 +796,8 @@ class DashboardPage(tk.Frame):
         y = (popup.winfo_screenheight() // 2) - (height // 2)
         popup.geometry(f"{width}x{height}+{x}+{y}")
 
-        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
+        if self.controller.favicon: # αν λείπει η εικόνα, το popup ανοίγει με το default εικονίδιο
+            popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup
@@ -1429,7 +1431,8 @@ class NewAppointPage(tk.Frame):
         self.close_btn.place_forget()
         self.newclient_btn.place_forget()
 
-        popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
+        if self.controller.favicon: # αν λείπει η εικόνα, το popup ανοίγει με το default εικονίδιο
+            popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
         
         self.current_popup = popup
         # Bind το κλείσιμο του popup

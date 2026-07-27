@@ -223,6 +223,46 @@ check("δεν εμφανίστηκε σφάλμα στον χρήστη",
       f"({shown_messages})")
 
 # ---------------------------------------------------------------------------
-root.destroy()
+# [5] Fallback όταν λείπει το images/favicon.png
+# ---------------------------------------------------------------------------
+print("\n[5] Fallback όταν λείπει το images/favicon.png")
+
+root.destroy()  # κλείνουμε το πρώτο root πριν φτιάξουμε την πραγματική MainApp
+
+# Προσομοίωση: καμία εικόνα δεν φορτώνεται (σαν να λείπει ο φάκελος images/)
+def _broken_photoimage(*args, **kwargs):
+    raise tk.TclError("προσομοίωση: δεν βρέθηκε το αρχείο εικόνας")
+
+gui.PhotoImage = _broken_photoimage
+
+app = None
+try:
+    app = gui.MainApp()
+    app.withdraw()
+    check("η MainApp ξεκινά παρά την αποτυχία φόρτωσης εικόνων", True)
+except Exception as e:
+    check("η MainApp ξεκινά παρά την αποτυχία φόρτωσης εικόνων", False,
+          f"({type(e).__name__}: {e})")
+
+if app is not None:
+    check("το attribute favicon υπάρχει στο instance", hasattr(app, "favicon"))
+    check("το favicon είναι None όταν αποτύχει η φόρτωση",
+          getattr(app, "favicon", "ΛΕΙΠΕΙ") is None)
+
+    dash = app.get_frame("DashboardPage")
+    try:
+        dash.show_new_client_popup()  # πριν το fix: AttributeError στο controller.favicon
+        check("το popup νέου πελάτη ανοίγει χωρίς favicon", True)
+    except Exception as e:
+        check("το popup νέου πελάτη ανοίγει χωρίς favicon", False,
+              f"({type(e).__name__}: {e})")
+
+    open_popups = [w for w in dash.winfo_children()
+                   if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+    check("το popup όντως δημιουργήθηκε", len(open_popups) == 1)
+
+# ---------------------------------------------------------------------------
+if app is not None:
+    app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
 sys.exit(1 if failed else 0)
