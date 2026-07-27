@@ -1472,14 +1472,16 @@ class NewAppointPage(tk.Frame):
         else: 
             selected_name = self.search_var.get().strip()
 
-        if self.current_customer_id:
+        # Ο πελάτης που επέλεξε ρητά ο χρήστης από τη λίστα υπερισχύει, ώστε να μπορεί
+        # να αλλάξει ο πελάτης σε υπάρχον ραντεβού. Το current_customer_id είναι ο
+        # αρχικός πελάτης του ραντεβού που επεξεργαζόμαστε.
+        if self.selected_id:
+            selected_id = self.selected_id
+        elif self.current_customer_id:
             selected_id = self.current_customer_id
         else:
-            try:
-                selected_id = self.selected_id
-            except:
-                messagebox.showerror("Σφάλμα", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
-                return
+            messagebox.showerror("Σφάλμα", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
+            return
         if (selected_name.strip() != self.search_var.get().strip()):
             messagebox.showerror("Σφάλμα!", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
             return
@@ -1606,7 +1608,12 @@ class NewAppointPage(tk.Frame):
 
     def edit_appoint(self, customer_id, name, datetime_str, services, notes, id, popup):
         popup.destroy()
-        self.editing = True 
+        self.editing = True
+        # Καθαρισμός τυχόν προηγούμενης επιλογής: το selected_id πρέπει να σημαίνει
+        # "ο πελάτης που επέλεξε ρητά ο χρήστης σε αυτή την επεξεργασία", ώστε να μη
+        # μεταφέρεται μπαγιάτικη επιλογή από προηγούμενο ραντεβού.
+        self.selected_id = None
+        self.selected_name = ""
         self.current_customer_id = customer_id
         self.search_var.set(name)
         self.search_customer()

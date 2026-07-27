@@ -2,7 +2,6 @@
 """
 Επιβεβαίωση για τα δύο bug fixes:
   1) Έλεγχος επικάλυψης ραντεβού κατά την αποθήκευση (απόρριψη double-booking)
-  2) Η επιλογή κλειστής ημέρας (Κυριακή/Δευτέρα) δεν κρασάρει πλέον την εφαρμογή
 
 Τρέχει σε προσωρινό φάκελο ώστε να ΜΗΝ αγγίξει το πραγματικό salon_appointments.db
 (όλα τα sqlite3.connect χρησιμοποιούν relative path).
@@ -143,6 +142,85 @@ count = len(Appointment.get_by_date(FRIDAY))
 check(f"δεν προστέθηκε ραντεβού στη βάση (παραμένουν 2, βρέθηκαν {count})", count == 2)
 check("εμφανίστηκε μήνυμα επικάλυψης στον χρήστη",
       any("κατειλημμένη" in msg for _t, msg in shown_messages))
+
+# ---------------------------------------------------------------------------
+# [4] Αλλαγή πελάτη σε υπάρχον ραντεβού (edit-appointment bug)
+# ---------------------------------------------------------------------------
+print("\n[4] Αλλαγή πελάτη σε υπάρχον ραντεβού")
+
+import sqlite3
+
+def db_customer_id(appointment_id):
+    """Διαβάζει το customer_id απευθείας από τη βάση (όχι μέσω των models)."""
+    with sqlite3.connect('salon_appointments.db') as conn:
+        row = conn.cursor().execute(
+            "SELECT customer_id FROM appointments WHERE id = ?", (appointment_id,)
+        ).fetchone()
+    return row[0] if row else None
+
+customer2 = Customer("Νέος", "Πελάτης", "6900000002", "new@example.com")
+customer2.save_to_db()
+cust2_id = customer2.id
+check("δημιουργήθηκε δεύτερος πελάτης", cust2_id is not None and cust2_id != cust_id)
+
+# --- 4α. Επίπεδο μοντέλου: το UPDATE πρέπει να γράφει και το customer_id ---
+check(f"πριν την αλλαγή, το ραντεβού ανήκει στον πελάτη {cust_id}",
+      db_customer_id(a1.id) == cust_id)
+
+moved = Appointment(cust2_id, f"{FRIDAY} 10:00", "Βάψιμο", 60, id=a1.id)
+moved.save_to_db(a1.id)  # ίδια ώρα, διαφορετικός πελάτης
+check(f"μετά το update το customer_id στη ΒΑΣΗ έγινε {cust2_id} "
+      f"(βρέθηκε {db_customer_id(a1.id)})",
+      db_customer_id(a1.id) == cust2_id)
+
+# --- 4β. Ο έλεγχος επικάλυψης εξακολουθεί να ισχύει κατά την αλλαγή πελάτη ---
+try:
+    clash = Appointment(cust_id, f"{FRIDAY} 10:20", "Χτένισμα", 20, id=a2.id)
+    clash.save_to_db(a2.id)  # μετακίνηση πάνω στο 10:00-11:00 με άλλο πελάτη
+    check("αλλαγή πελάτη ΔΕΝ παρακάμπτει τον έλεγχο επικάλυψης", False,
+          "(αποθηκεύτηκε ενώ επικαλύπτεται!)")
+except AppointmentOverlapError:
+    check("αλλαγή πελάτη ΔΕΝ παρακάμπτει τον έλεγχο επικάλυψης", True)
+check("το ραντεβού που απορρίφθηκε δεν άλλαξε πελάτη στη βάση",
+      db_customer_id(a2.id) == cust_id)
+
+# --- 4γ. Επίπεδο GUI: το save_appoint πρέπει να προτιμά τη νέα επιλογή πελάτη ---
+class _StubController:
+    """Ελάχιστο stub του MainApp για τα tests (χωρίς πραγματική πλοήγηση)."""
+    def show_frame(self, page_name):
+        pass
+    def get_frame(self, page_name):
+        return self
+    def on_minical_date_selected(self, event=None):
+        pass
+
+page2 = gui.NewAppointPage(root, controller=_StubController())
+
+# Φόρτωση του υπάρχοντος ραντεβού a2 (11:00, Χτένισμα) όπως κάνει το popup λεπτομερειών
+popup = tk.Toplevel(root)
+page2.edit_appoint(cust_id, "Δοκιμή Δοκιμάκης", f"{FRIDAY} 11:00",
+                   "Χτένισμα", "", a2.id, popup)
+check("το edit φόρτωσε τον αρχικό πελάτη του ραντεβού",
+      page2.current_customer_id == cust_id)
+check("το edit καθάρισε τυχόν προηγούμενη επιλογή πελάτη",
+      page2.selected_id is None)
+
+# Ο χρήστης επιλέγει άλλον πελάτη από τη λίστα (όπως κάνει η my_upd)
+page2.selected_id = cust2_id
+page2.selected_name = "Νέος Πελάτης"
+page2.search_var.set("Νέος Πελάτης")
+shown_messages.clear()
+page2.save_appoint()
+
+check(f"μετά το save μέσω GUI το customer_id στη ΒΑΣΗ έγινε {cust2_id} "
+      f"(βρέθηκε {db_customer_id(a2.id)})",
+      db_customer_id(a2.id) == cust2_id)
+check("η ώρα του ραντεβού παρέμεινε 11:00",
+      any(a.id == a2.id and a.datetime == f"{FRIDAY} 11:00"
+          for a in Appointment.get_by_date(FRIDAY)))
+check("δεν εμφανίστηκε σφάλμα στον χρήστη",
+      not any(t.startswith("Σφάλμα") for t, _m in shown_messages),
+      f"({shown_messages})")
 
 # ---------------------------------------------------------------------------
 root.destroy()

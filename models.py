@@ -146,9 +146,9 @@ class Appointment:
                 if existing_appointment:
                     # Αν υπάρχει, ενημερώνει τα στοιχεία
                     c.execute('''
-                        UPDATE appointments SET datetime = ?, services = ?, duration = ?, notes = ?
+                        UPDATE appointments SET customer_id = ?, datetime = ?, services = ?, duration = ?, notes = ?
                         WHERE id = ?
-                    ''', (self.datetime, self.services, self.duration, self.notes, id))
+                    ''', (self.customer_id, self.datetime, self.services, self.duration, self.notes, id))
                 else:
                     # Αν δεν υπάρχει, εισάγει νέο πελάτη
                     c.execute('''
