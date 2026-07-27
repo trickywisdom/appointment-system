@@ -262,6 +262,41 @@ if app is not None:
     check("το popup όντως δημιουργήθηκε", len(open_popups) == 1)
 
 # ---------------------------------------------------------------------------
+# [6] Αποθήκευση πελάτη μέσα από popup: το popup πρέπει να κλείνει
+# ---------------------------------------------------------------------------
+print("\n[6] Το popup νέου πελάτη κλείνει μετά την αποθήκευση")
+
+def popups_of(page):
+    return [w for w in page.winfo_children()
+            if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+
+if app is not None and popups_of(dash):
+    popup = popups_of(dash)[0]
+    # Το NewClientPage ζει μέσα στο popup (διαφορετικό instance από το frames[])
+    form = next(w for w in popup.winfo_children() if isinstance(w, gui.NewClientPage))
+    check("το popup περιέχει φόρμα NewClientPage", form is not None)
+    check("η current_frame παραμένει η Dashboard όσο είναι ανοιχτό το popup",
+          app.current_frame is dash)
+
+    form.entry_name.insert(0, "Ποπ")
+    form.entry_surname.insert(0, "Απάκης")
+    form.entry_phone.insert(0, "6900000003")
+    form.entry_email.insert(0, "popup@example.com")
+
+    shown_messages.clear()
+    form.save_customer()
+
+    check("ο πελάτης αποθηκεύτηκε στη βάση",
+          any(c.phone == "6900000003" for c in Customer.get_all()))
+    check("το popup ΕΚΛΕΙΣΕ μετά την αποθήκευση",
+          len(popups_of(dash)) == 0,
+          f"(παρέμειναν ανοιχτά: {len(popups_of(dash))})")
+    check("παραμένουμε στη Dashboard, δεν πήγαμε στη ClientsPage",
+          app.current_frame is dash)
+else:
+    check("υπάρχει ανοιχτό popup για τον έλεγχο", False, "(δεν βρέθηκε popup)")
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")

@@ -1705,10 +1705,9 @@ class NewAppointPage(tk.Frame):
         
 class NewClientPage(tk.Frame):
 
-    def __init__(self, parent, controller, is_popup=False):
+    def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
-        self.is_popup = is_popup        # Αν είναι popup
         self.parent_window = parent     # Για να κλείνουμε popups
         sv_ttk.set_theme("light")
         self.editing = False # Flag για όταν κάνουμε new client και θέλουμε reset_fields, και edit client που εννοείται δεν θέλουμε reset_fields
@@ -1782,7 +1781,16 @@ class NewClientPage(tk.Frame):
 
                 # Καλεί την load_clients για να καθαρίσει το all clients table και να το ξαναγεμίσει περιέχοντας τον καινούργιο customer
                 self.controller.get_frame("ClientsPage").load_clients()
-                # Πηγαίνουμε στην ClientsPage
+
+                # Αν είμαστε μέσα σε popup, το κλείνουμε και μένουμε στη σελίδα που
+                # ήμασταν (ίδιο μοτίβο με την cancel_action: η current_frame δείχνει
+                # την υποκείμενη σελίδα και η on_popup_close κλείνει το Toplevel).
+                for page_name in ("DashboardPage", "NewAppointPage"):
+                    page = self.controller.frames.get(page_name)
+                    if page is not None and self.controller.current_frame is page:
+                        page.on_popup_close()
+                        return
+                # Αλλιώς (η σελίδα ανοίχτηκε κανονικά) πηγαίνουμε στην ClientsPage
                 self.controller.show_frame("ClientsPage")
             except Exception as e:
                 messagebox.showerror("Παρουσιάστηκε σφάλμα", f"Αποτυχία στην αποθήκευση του πελάτη: {e}")
