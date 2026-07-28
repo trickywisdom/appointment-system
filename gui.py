@@ -645,7 +645,12 @@ class DashboardPage(tk.Frame):
         def my_upd(my_widget):
             """Επεξεργασία επιλογής πελάτη από τη λίστα"""
             my_w = my_widget.widget
-            index = int(my_w.curselection()[0])
+            selection = my_w.curselection()
+            if not selection:
+                # Κενή επιλογή: το listbox απλώς έχασε το selection (exportselection),
+                # π.χ. όταν επιλέγει ο χρήστης σε άλλο listbox/Entry. Δεν είναι επιλογή πελάτη.
+                return
+            index = int(selection[0])
             customer = filtered_customers[index]
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
             value = my_w.get(index).strip()
@@ -1341,7 +1346,12 @@ class NewAppointPage(tk.Frame):
 
         def my_upd(my_widget):
             my_w = my_widget.widget
-            index = int(my_w.curselection()[0])
+            selection = my_w.curselection()
+            if not selection:
+                # Κενή επιλογή: το listbox απλώς έχασε το selection (exportselection),
+                # π.χ. όταν επιλέγει ο χρήστης σε άλλο listbox/Entry. Δεν είναι επιλογή πελάτη.
+                return
+            index = int(selection[0])
             customer = filtered_customers[index]
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
             value = my_w.get(index).strip()

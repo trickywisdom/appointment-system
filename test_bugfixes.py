@@ -297,6 +297,45 @@ else:
     check("υπάρχει ανοιχτό popup για τον έλεγχο", False, "(δεν βρέθηκε popup)")
 
 # ---------------------------------------------------------------------------
+# [7] <<ListboxSelect>> με κενή επιλογή δεν πρέπει να σκάει (IndexError)
+# ---------------------------------------------------------------------------
+print("\n[7] <<ListboxSelect>> με κενή επιλογή")
+
+if app is not None:
+    appt_page = app.get_frame("NewAppointPage")
+    appt_page.search_var.set("")  # κενό query -> ταιριάζουν όλοι οι πελάτες
+    app.update_idletasks()
+
+    check("το my_upd είναι δεμένο στο listbox",
+          bool(appt_page.l1.bind("<<ListboxSelect>>")))
+    check("το listbox έχει πελάτες", appt_page.l1.size() > 0)
+
+    # Το Tkinter καταπίνει τις εξαιρέσεις των callbacks - τις καταγράφουμε
+    callback_errors = []
+    app.report_callback_exception = lambda exc, val, tb: callback_errors.append(val)
+
+    # Θετικός έλεγχος: κανονική επιλογή -> ο handler όντως τρέχει
+    appt_page.selected_id = None
+    appt_page.l1.selection_set(0)
+    appt_page.l1.event_generate("<<ListboxSelect>>")
+    app.update()
+    check("κανονική επιλογή ενημερώνει το selected_id",
+          appt_page.selected_id is not None, f"({callback_errors})")
+
+    # Ο πραγματικός έλεγχος: κενή επιλογή, όπως όταν χάνεται το exportselection
+    callback_errors.clear()
+    sentinel = appt_page.selected_id
+    appt_page.l1.selection_clear(0, tk.END)
+    check("δεν υπάρχει πλέον επιλογή στο listbox",
+          appt_page.l1.curselection() == ())
+    appt_page.l1.event_generate("<<ListboxSelect>>")
+    app.update()
+    check("κενή επιλογή δεν προκαλεί εξαίρεση", not callback_errors,
+          f"({callback_errors})")
+    check("το selected_id δεν άλλαξε από το κενό event",
+          appt_page.selected_id == sentinel)
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
