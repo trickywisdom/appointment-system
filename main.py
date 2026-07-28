@@ -22,7 +22,7 @@ def check_dependencies():
         'xlsxwriter': 'xlsxwriter',
         # 'PIL': 'pillow',
         'sv_ttk': 'sv-ttk',
-        # 'tkinter-tooltip': 'tkinter-tooltip'
+        'tktooltip': 'tkinter-tooltip'  # το κλειδί είναι το import name, η τιμή το pip name
     }
     
     for module_name, pip_name in required_modules.items():

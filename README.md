@@ -17,7 +17,6 @@ This is a simple desktop application for managing appointments using Python and 
 - SQLite3
 - XlsxWriter
 - tkcalendar
-- PIL
 
 ## 🗂 Project Structure
 

@@ -1563,67 +1563,6 @@ class NewAppointPage(tk.Frame):
         
         self.editing = False
 
-    # def show_edit_appointment_popup(self, customer_id, name, datetime_str, services, notes, id): # προσωρινά ανενεργό
-    #     popup = tk.Toplevel(self)
-    #     popup.title("Επεξεργασία ραντεβού")
-    #     popup.geometry("800x550")
-    #     popup.resizable(False, False)
-    #     popup.grab_set()
-    #     popup.focus_set()
-        
-    #     # Φόρτωση της σελίδας NewAppointPage μέσα στο popup
-    #     new_client_frame = NewAppointPage(popup, self.controller)
-    #     new_client_frame.pack(side="left", expand=False, fill="none")
-
-    #     self.editing = True 
-        
-    #     self.current_customer_id = customer_id
-    #     self.search_var.set(name)
-    #     self.search_customer()
-    #     # Διαχωρισμός ημερομηνίας και ώρας
-    #     dt_str, time_str = datetime_str.split()
-    #     print("dt_str",dt_str)
-    #     yyyy, mm, dd = dt_str.split('-')
-    #     dt_str = f"{dd}-{mm}-{yyyy}"
-    #     # Μετατροπή string ημερομηνίας σε datetime αντικείμενο
-    #     try:
-    #         self.appoint_date.set_date(dt_str)
-     
-    #     except Exception as e:
-    #         messagebox.showerror("Σφάλμα", f"Λάθος μορφή ημερομηνίας: {e}")
-    #     self.service_dropdown.set(services)
-    #     # self.duration_dropdown.set(duration)
-    #     self.notes.delete("1.0", tk.END)  # Καθαρισμός του πεδίου
-    #     self.notes.insert("1.7", notes)
-    #     self.current_appointment_id = id
-    #     self.get_time_options()
-    #     self.controller.show_frame("DashboardPage")
-    #     self.l1.place_forget()
-    #     self.scrollbar.place_forget()
-        
-    #     # Κεντράρισμα popup
-    #     popup.update_idletasks()
-    #     width = popup.winfo_width()
-    #     height = popup.winfo_height()
-    #     x = (popup.winfo_screenwidth() // 2) - (width // 2)
-    #     y = (popup.winfo_screenheight() // 2) - (height // 2)
-    #     popup.geometry(f"{width}x{height}+{x}+{y}")
-
-    #     self.current_popup = popup
-    #     # Bind το κλείσιμο του popup
-    #     popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
-
-    # def on_popup_close(self, popup=None):
-    #      # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο
-    #     open_popups = [
-    #         w for w in self.winfo_children() 
-    #         if isinstance(w, tk.Toplevel) and w.winfo_exists()
-    #     ]
-        
-    #     for popup in open_popups:
-    #         popup.destroy()
-    #     self.focus_set()
-
     def edit_appoint(self, customer_id, name, datetime_str, services, notes, id, popup):
         popup.destroy()
         self.editing = True
