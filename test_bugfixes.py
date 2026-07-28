@@ -115,7 +115,7 @@ except Exception as e:
 check("το time dropdown απενεργοποιήθηκε", str(page.time_dropdown['state']) == 'disabled')
 
 # save_appoint με κενό πεδίο ημερομηνίας: πριν το fix σκούσε με ValueError στο strptime
-page.current_customer_id = cust_id
+page.selected_id = cust_id  # όπως όταν ο χρήστης επιλέγει πελάτη από τη λίστα (my_upd)
 page.selected_name = "Δοκιμή Δοκιμάκης"
 page.search_var.set("Δοκιμή Δοκιμάκης")
 shown_messages.clear()
@@ -334,6 +334,78 @@ if app is not None:
           f"({callback_errors})")
     check("το selected_id δεν άλλαξε από το κενό event",
           appt_page.selected_id == sentinel)
+
+# ---------------------------------------------------------------------------
+# [8] Edit mode: ελεύθερο κείμενο στο πεδίο πελάτη
+# ---------------------------------------------------------------------------
+print("\n[8] Edit mode: ελεύθερο κείμενο στο πεδίο πελάτη")
+
+if app is not None:
+    ap = app.get_frame("NewAppointPage")
+    orig_owner = db_customer_id(a1.id)
+    orig_name = Customer.get_name_by_id(orig_owner)
+
+    def load_a1():
+        """Φορτώνει το ραντεβού a1 στη φόρμα, όπως κάνει το popup λεπτομερειών."""
+        ap.edit_appoint(orig_owner, orig_name, f"{FRIDAY} 10:00",
+                        "Βάψιμο", "", a1.id, tk.Toplevel(app))
+        app.update_idletasks()
+
+    def titles():
+        return [t for t, _m in shown_messages]
+
+    # (α) ελεύθερο κείμενο που δεν αντιστοιχεί σε πελάτη -> απόρριψη
+    load_a1()
+    ap.search_var.set("ανύπαρκτο ονοματεπώνυμο")
+    shown_messages.clear()
+    ap.save_appoint()
+    check("ελεύθερο κείμενο σε edit απορρίπτεται",
+          any(t.startswith("Σφάλμα") for t in titles()), f"({shown_messages})")
+    check("δεν εμφανίστηκε μήνυμα επιτυχίας για ελεύθερο κείμενο",
+          "Επιτυχία" not in titles(), f"({shown_messages})")
+    check("ο πελάτης του ραντεβού δεν άλλαξε μετά την απόρριψη",
+          db_customer_id(a1.id) == orig_owner)
+
+    # (β) πεδίο πελάτη ανέγγιχτο -> αποθηκεύεται κανονικά με τον αρχικό πελάτη
+    load_a1()
+    ap.notes.delete("1.0", tk.END)
+    ap.notes.insert("1.0", "αλλαγή μόνο στις σημειώσεις")
+    shown_messages.clear()
+    ap.save_appoint()
+    check("ανέγγιχτο πεδίο πελάτη -> το ραντεβού αποθηκεύεται",
+          "Επιτυχία" in titles(), f"({shown_messages})")
+    check("διατηρήθηκε ο αρχικός πελάτης", db_customer_id(a1.id) == orig_owner)
+
+    # (γ) το μήνυμα επιτυχίας ονομάζει τον πελάτη που όντως γράφτηκε στη βάση
+    load_a1()
+    ap.selected_id = cust_id                      # ο χρήστης επιλέγει άλλον πελάτη
+    ap.selected_name = Customer.get_name_by_id(cust_id)
+    ap.search_var.set(ap.selected_name)
+    shown_messages.clear()
+    ap.save_appoint()
+    saved_name = Customer.get_name_by_id(db_customer_id(a1.id))
+    success = [m for t, m in shown_messages if t == "Επιτυχία"]
+    check("η αλλαγή πελάτη μέσω λίστας αποθηκεύτηκε",
+          db_customer_id(a1.id) == cust_id)
+    check("το μήνυμα επιτυχίας ονομάζει τον πελάτη που αποθηκεύτηκε",
+          bool(success) and saved_name in success[0],
+          f"(μήνυμα={success}, στη βάση='{saved_name}')")
+
+    # (δ) το όνομα στο μήνυμα διαβάζεται από τη βάση, όχι από το πεδίο αναζήτησης:
+    #     μετονομάζουμε τον πελάτη ΑΦΟΥ φορτωθεί η φόρμα, ώστε τα δύο να διαφέρουν
+    cur_owner = db_customer_id(a1.id)
+    ap.edit_appoint(cur_owner, Customer.get_name_by_id(cur_owner), f"{FRIDAY} 10:00",
+                    "Βάψιμο", "", a1.id, tk.Toplevel(app))
+    app.update_idletasks()
+
+    c = Customer.get_customer_by_id(cur_owner)
+    Customer(c.first_name, "Μετονομασμένος", c.phone, c.email, cur_owner).save_to_db(cur_owner)
+
+    shown_messages.clear()
+    ap.save_appoint()  # πεδίο ανέγγιχτο -> ίδιος πελάτης, αλλά νέο επώνυμο στη βάση
+    success = [m for t, m in shown_messages if t == "Επιτυχία"]
+    check("το μήνυμα παίρνει το όνομα από τη βάση, όχι από το πεδίο",
+          bool(success) and "Μετονομασμένος" in success[0], f"({success})")
 
 # ---------------------------------------------------------------------------
 if app is not None:

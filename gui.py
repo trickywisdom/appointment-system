@@ -1118,6 +1118,7 @@ class NewAppointPage(tk.Frame):
         self.selected_id = None
         self.current_customer_id = None
         self.current_appointment_id = None
+        self.loaded_customer_name = "" # το όνομα που φορτώθηκε στο πεδίο κατά το edit, για να ξεχωρίζουμε "ανέγγιχτο" από "ελεύθερο κείμενο"
         self.datetime_obj = None # για την περίπτωση του edit: δεν θέλουμε να αφαιρούνται τα time_options που αφορούν το συγκεκριμένο ραντεβού
         self.onlyinit = True
         # Φόρτωση εικόνας
@@ -1480,23 +1481,20 @@ class NewAppointPage(tk.Frame):
         Save or Update ένα (καινούργιο) ραντεβού στη database.
         """
 
-        if self.selected_name:   
-            selected_name = self.selected_name
-        else: 
-            selected_name = self.search_var.get().strip()
+        # Το κείμενο του πεδίου πρέπει να αντιστοιχεί σε πραγματικό πελάτη:
+        #  - είτε τον επέλεξε ο χρήστης από τη λίστα (selected_id/selected_name) και δεν
+        #    πείραξε μετά το κείμενο,
+        #  - είτε το πεδίο έμεινε ανέγγιχτο σε edit (loaded_customer_name), οπότε κρατάμε
+        #    τον αρχικό πελάτη του ραντεβού (π.χ. αλλάζουμε μόνο ώρα/υπηρεσία).
+        # Οτιδήποτε άλλο είναι ελεύθερο κείμενο και απορρίπτεται.
+        typed_name = self.search_var.get().strip()
 
-        # Ο πελάτης που επέλεξε ρητά ο χρήστης από τη λίστα υπερισχύει, ώστε να μπορεί
-        # να αλλάξει ο πελάτης σε υπάρχον ραντεβού. Το current_customer_id είναι ο
-        # αρχικός πελάτης του ραντεβού που επεξεργαζόμαστε.
-        if self.selected_id:
+        if self.selected_id and typed_name == (self.selected_name or "").strip():
             selected_id = self.selected_id
-        elif self.current_customer_id:
+        elif self.current_customer_id and typed_name == self.loaded_customer_name:
             selected_id = self.current_customer_id
         else:
-            messagebox.showerror("Σφάλμα", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
-            return
-        if (selected_name.strip() != self.search_var.get().strip()):
-            messagebox.showerror("Σφάλμα!", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού")
+            messagebox.showerror("Σφάλμα", "Διαλέξτε υπαρκτό πελάτη για το ραντεβού από τη λίστα")
             return
 
         appoint_date = self.appoint_date.get()
@@ -1548,7 +1546,10 @@ class NewAppointPage(tk.Frame):
                 messagebox.showerror("Σφάλμα", "Όλα τα πεδία πρέπει να συμπληρωθούν σωστά")
                 print("Παρουσιάστηκε σφάλμα", f"{e}")
                 return
-            messagebox.showinfo("Επιτυχία", f"Αποθηκεύτηκε το ραντεβού για {selected_name}")
+            # Το μήνυμα δείχνει τον πελάτη που όντως γράφτηκε στη βάση, όχι ό,τι έτυχε
+            # να υπάρχει στο πεδίο αναζήτησης.
+            saved_customer_name = Customer.get_name_by_id(selected_id) or typed_name
+            messagebox.showinfo("Επιτυχία", f"Αποθηκεύτηκε το ραντεβού για {saved_customer_name}")
 
             # Πηγαίνουμε στην DashboardPage και καλούμε την rebuild_calendar
             self.controller.get_frame("DashboardPage").on_minical_date_selected()
@@ -1627,6 +1628,7 @@ class NewAppointPage(tk.Frame):
         # μεταφέρεται μπαγιάτικη επιλογή από προηγούμενο ραντεβού.
         self.selected_id = None
         self.selected_name = ""
+        self.loaded_customer_name = (name or "").strip() # ό,τι φορτώνουμε στο πεδίο = "ανέγγιχτο"
         self.current_customer_id = customer_id
         self.search_var.set(name)
         self.search_customer()
@@ -1667,6 +1669,7 @@ class NewAppointPage(tk.Frame):
         self.selected_id = None
         self.current_customer_id = None
         self.current_appointment_id = None
+        self.loaded_customer_name = ""
         self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
         self.service_dropdown.set("")
         self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
@@ -1696,6 +1699,7 @@ class NewAppointPage(tk.Frame):
             self.selected_id = None
             self.current_customer_id = None
             self.current_appointment_id = None
+            self.loaded_customer_name = ""
             self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
             self.appoint_date.set_date(datetime.today().date())  # Επαναφέρει τη σημερινή ημερομηνία
             self.time_dropdown.set("")  # Καθαρίζει την ώρα
