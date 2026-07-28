@@ -441,7 +441,9 @@ class DashboardPage(tk.Frame):
 
         # === Search πελατών ===
         # Search Listbox
-        self.l1 = tk.Listbox(self, relief="flat", width=1, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
+        # exportselection=0: το listbox δεν διεκδικεί το PRIMARY selection, ώστε να μη χάνει
+        # την επιλογή του (και να μη στέλνει κενό <<ListboxSelect>>) όταν επιλέγει ο χρήστης αλλού
+        self.l1 = tk.Listbox(self, relief="flat", width=1, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10), exportselection=0)
         
         # Κουμπί κλεισίματος λίστας  
         self.close_btn = tk.Button(
@@ -1135,7 +1137,9 @@ class NewAppointPage(tk.Frame):
 
         ttk.Label(self.content, text="Πελάτης:", anchor="w", width=20).grid(row=0, column=0, sticky="w", pady=10)
 
-        self.l1 = tk.Listbox(self.content, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10))
+        # exportselection=0: το listbox δεν διεκδικεί το PRIMARY selection, ώστε να μη χάνει
+        # την επιλογή του (και να μη στέλνει κενό <<ListboxSelect>>) όταν επιλέγει ο χρήστης αλλού
+        self.l1 = tk.Listbox(self.content, relief="flat", width=35, bg="#f0f0f0", borderwidth=1, highlightthickness=1, font=("Segoe UI", 10), exportselection=0)
         self.close_btn = tk.Button(
                     self.content,
                     image=self.closebtn_rounded,

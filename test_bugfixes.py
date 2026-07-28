@@ -302,6 +302,12 @@ else:
 print("\n[7] <<ListboxSelect>> με κενή επιλογή")
 
 if app is not None:
+    # Με exportselection=0 το Tk δεν παραδίδει virtual events σε unmapped widget,
+    # οπότε για αυτόν τον έλεγχο εμφανίζουμε πραγματικά το παράθυρο και τη σελίδα.
+    app.deiconify()
+    app.show_frame("NewAppointPage")
+    app.update()
+
     appt_page = app.get_frame("NewAppointPage")
     appt_page.search_var.set("")  # κενό query -> ταιριάζουν όλοι οι πελάτες
     app.update_idletasks()
@@ -334,6 +340,8 @@ if app is not None:
           f"({callback_errors})")
     check("το selected_id δεν άλλαξε από το κενό event",
           appt_page.selected_id == sentinel)
+
+    app.withdraw()
 
 # ---------------------------------------------------------------------------
 # [8] Edit mode: ελεύθερο κείμενο στο πεδίο πελάτη
