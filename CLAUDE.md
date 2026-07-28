@@ -20,9 +20,9 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 ## DEPS
 
 - stdlib: tkinter, sqlite3, smtplib (smtplib is NOT pip-installable — README is wrong on this)  
-- third-party: tkcalendar, tktooltip, XlsxWriter  
+- third-party: tkcalendar, tktooltip, XlsxWriter, sv-ttk (Sun Valley theme; pip name `sv-ttk`, import name `sv_ttk`)  
 - PIL: imported commented-out; not active  
-- Install: `pip install tkcalendar tktooltip XlsxWriter`
+- Install: `pip install tkcalendar tktooltip XlsxWriter sv-ttk`
 
 ## RUN / TEST
 
