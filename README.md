@@ -47,7 +47,7 @@ cd appointment-system
 
 2. Install dependencies:
 ```bash
-pip install tkcalendar xlsxwriter smtplib sv-ttk tkinter-tooltip
+pip install tkcalendar xlsxwriter sv-ttk tkinter-tooltip
 ```
 
 3. Run the app:
