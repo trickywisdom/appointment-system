@@ -416,6 +416,86 @@ if app is not None:
           bool(success) and "Μετονομασμένος" in success[0], f"({success})")
 
 # ---------------------------------------------------------------------------
+# [9] Characterization: κωδικοποιεί τη ΣΗΜΕΡΙΝΗ συμπεριφορά αναζήτησης μαζί με τα γνωστά
+# ελαττώματά της (ευαισθησία σε τόνους/κεφαλαία, δεν ψάχνει όνομα/email/πλήρες
+# ονοματεπώνυμο)· το βήμα 2 θα αλλάξει σκόπιμα τέσσερα από αυτά.
+# ---------------------------------------------------------------------------
+print("\n[9] Characterization: αναζήτηση πελατών (Dashboard / Clients / NewAppoint)")
+
+if app is not None:
+    # Η [9] έχει δικό της fixture: οι προηγούμενες ενότητες μεταλλάσσουν το κοινό roster -
+    # συγκεκριμένα η [8](δ) μετονομάζει τον πελάτη 1 σε "Μετονομασμένος" - οπότε δεν
+    # στηριζόμαστε σε ονόματα που δημιούργησε άλλη ενότητα.
+    fixture = Customer("Ελένη", "Παπαδοπούλου", "6971234567", "elenip@paradeigma.gr")
+    fixture.save_to_db()
+    check("δημιουργήθηκε ο πελάτης-fixture της [9]", fixture.id is not None)
+
+    def listbox_rows(page):
+        """Οι γραμμές του listbox ως tuple (DashboardPage / NewAppointPage)."""
+        return tuple(page.l1.get(0, tk.END))
+
+    def client_rows(page):
+        """Το επώνυμο κάθε γραμμής που ζωγραφίστηκε στη ClientsPage (μη κενές μόνο)."""
+        rows = []
+        for row in page.scrollable_frame.winfo_children():
+            labels = [w for w in row.winfo_children() if isinstance(w, tk.Label)]
+            if not labels:
+                continue
+            text = labels[0].cget("text")
+            if text:
+                rows.append(text)
+        return rows
+
+    NOT_FOUND = ("   Ο πελάτης δε βρέθηκε...",)
+
+    # (query, mode, αναμενόμενο για listbox σελίδες, αναμενόμενο για ClientsPage)
+    QUERIES = [
+        # κενός όρος -> εμφανίζονται όλοι
+        ("",                    "count",    None,                        None),
+        # POSITIVE CONTROL: το επώνυμο ακριβώς όπως είναι αποθηκευμένο
+        ("παπαδοπούλου",        "equals",   (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+        # χωρίς τόνο -> δεν βρίσκει (ευαισθησία σε τόνους)
+        ("παπαδοπουλου",        "equals",   NOT_FOUND,                   []),
+        # κεφαλαία -> δεν βρίσκει (το .lower() των κεφαλαίων χάνει τον τόνο)
+        ("ΠΑΠΑΔΟΠΟΥΛΟΥ",        "equals",   NOT_FOUND,                   []),
+        # μικρό όνομα -> δεν ψάχνεται
+        ("ελένη",               "equals",   NOT_FOUND,                   []),
+        # email -> δεν ψάχνεται
+        ("paradeigma",          "equals",   NOT_FOUND,                   []),
+        # πλήρες ονοματεπώνυμο -> δεν ψάχνεται
+        ("Ελένη Παπαδοπούλου",  "equals",   NOT_FOUND,                   []),
+        # τηλέφωνο ακριβώς -> βρίσκει
+        ("6971234567",          "equals",   (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+        # τμήμα τηλεφώνου -> βρίσκει
+        ("697123",              "contains", (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+    ]
+
+    PAGES = [
+        ("DashboardPage",  app.get_frame("DashboardPage"),  listbox_rows, True),
+        ("NewAppointPage", app.get_frame("NewAppointPage"), listbox_rows, True),
+        ("ClientsPage",    app.get_frame("ClientsPage"),    client_rows,  False),
+    ]
+
+    for page_name, pg, read_rows, is_listbox in PAGES:
+        for query, mode, exp_listbox, exp_clients in QUERIES:
+            expected = exp_listbox if is_listbox else exp_clients
+            pg.search_var.set(query)
+            app.update_idletasks()
+            got = read_rows(pg)
+            label = f"{page_name} q={query!r}"
+
+            if mode == "count":
+                n = len(Customer.get_all())
+                check(f"{label} -> {n} γραμμές (μία ανά πελάτη)",
+                      len(got) == n, f"(got={got})")
+            elif mode == "equals":
+                check(f"{label} -> {expected}",
+                      got == expected, f"(got={got})")
+            else:
+                check(f"{label} -> περιέχει {expected}",
+                      all(e in got for e in expected), f"(got={got})")
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
