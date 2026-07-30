@@ -636,13 +636,15 @@ class DashboardPage(tk.Frame):
         """Αναζήτηση πελατών βάσει ονόματος ή τηλεφώνου"""
         self.query = self.search_var.get().strip().lower()
 
-        customer_list = self.show_all_customers()
-
         # Φιλτράρισμα
-        filtered_customers = [
-            customer for customer in customer_list
-            if self.query in customer[1].lower() or self.query in customer[2]
-        ]
+        try:
+            filtered_customers = [
+                (c.first_name, c.last_name, c.phone, c.id)
+                for c in Customer.search(self.query)
+            ]
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            filtered_customers = []
 
         def my_upd(my_widget):
             """Επεξεργασία επιλογής πελάτη από τη λίστα"""
@@ -922,18 +924,21 @@ class ClientsPage(tk.Frame):
         self.scrollable_frame.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
 
     def search_customer(self, *args):
-        customer_list = self.show_all_customers()
         query = self.search_var.get().strip().lower()
+
+        # Φιλτράρισμα
+        try:
+            filtered_customers = [
+                (c.first_name, c.last_name, c.phone, c.email, c.id)
+                for c in Customer.search(query)
+            ]
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            filtered_customers = []
 
         # Καθαρισμός παλιών widgets
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-
-        # Φιλτράρισμα
-        filtered_customers = [
-            customer for customer in customer_list
-            if query in customer[1].lower() or query in customer[2]
-        ]
 
         # Ταξινόμηση
         filtered_customers.sort(key=lambda x: (x[1] == "", x[1])) #πιθανόν δε χρειάζεται πια, γίνεται από το models
@@ -1340,14 +1345,17 @@ class NewAppointPage(tk.Frame):
             self.newclient_btn.place_forget()
 
     def search_customer(self, *args):
-        customer_list = self.show_all_customers()
         self.query = self.search_var.get().strip().lower()
 
         # Φιλτράρισμα
-        filtered_customers = [
-            customer for customer in customer_list
-            if self.query in customer[1].lower() or self.query in customer[2]
-        ]
+        try:
+            filtered_customers = [
+                (c.first_name, c.last_name, c.phone, c.id)
+                for c in Customer.search(self.query)
+            ]
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            filtered_customers = []
 
         def my_upd(my_widget):
             my_w = my_widget.widget

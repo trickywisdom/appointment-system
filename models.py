@@ -108,7 +108,18 @@ class Customer:
         except Exception as e:
             print(f"Error retrieving customer by ID: {e}")
             return None
-            
+
+    @staticmethod
+    def matches(customer, term):
+        """Έλεγχος αν ένας πελάτης ταιριάζει με τον όρο αναζήτησης."""
+        q = (term or "").strip().lower()
+        return q in (customer.last_name or "").lower() or q in (customer.phone or "")
+
+    @staticmethod
+    def search(term):
+        """Επιστρέφει τους πελάτες που ταιριάζουν με τον όρο αναζήτησης."""
+        return [c for c in Customer.get_all() if Customer.matches(c, term)]
+
 
 class Appointment:
     def __init__(self, customer_id, datetime, services, duration=20, notes="", id=None,
