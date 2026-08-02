@@ -14,6 +14,14 @@ import export_excel
 import locale
 import platform
 
+# Placeholder του πεδίου αναζήτησης πελατών — κοινό και στις τρεις σελίδες.
+# ΠΡΟΣΟΧΗ: γράφεται στο traced search_var, οπότε είναι και όρος αναζήτησης· το 🔍
+# εγγυάται ότι δεν ταιριάζει με κανέναν πελάτη.
+# Το «η» θα ταίριαζε με «ελένη» και το «email» με διευθύνσεις που το περιέχουν —
+# η αδράνεια στηρίζεται στο 🔍 και στο κόμμα του «Όνομα,». Αλλαγή του κειμένου
+# απαιτεί επανέλεγχο.
+SEARCH_PLACEHOLDER = "🔍 Όνομα, τηλέφωνο ή email"
+
 def set_greek_locale():
     """
     Ρυθμίζει το ελληνικό locale για την εμφάνιση ημερομηνιών στα ελληνικά.
@@ -495,7 +503,7 @@ class DashboardPage(tk.Frame):
                                         border=1, borderwidth=8,
                                             highlightbackground="#e9e9e9", highlightthickness=1, highlightcolor="#C3C6CA", insertbackground="#686868",
                                               width=25)
-        self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
+        self.search_client.insert(0, SEARCH_PLACEHOLDER)
         self.search_client.bind("<FocusIn>", lambda args: self.search_client.delete('0', 'end'))
         # self.search_client.bind("<FocusOut>", lambda args: self.search_client.insert(0, "🔍Επώνυμο ή Τηλ"))
         self.search_client.pack(anchor="nw", pady=(15,45), ipady=0, padx=13, expand=1)
@@ -821,7 +829,7 @@ class DashboardPage(tk.Frame):
         for popup in open_popups:
             popup.destroy()
         self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
-        self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
+        self.search_client.insert(0, SEARCH_PLACEHOLDER)
         self.l1.place_forget()
         self.close_btn.place_forget()
         self.scrollbar.place_forget()
@@ -843,7 +851,7 @@ class DashboardPage(tk.Frame):
             pass
         else:
             self.search_client.delete(0, tk.END)
-            self.search_client.insert(0, "🔍 Επώνυμο & Τηλέφωνο")
+            self.search_client.insert(0, SEARCH_PLACEHOLDER)
             # 1. Λήψη σημερινής ημερομηνίας
             today = datetime.today().date()
             # 2. Ορισμός επιλογής στο calendar
@@ -879,7 +887,7 @@ class ClientsPage(tk.Frame):
         self.search_var = tk.StringVar()
         self.search_var.trace_add('write', self.search_customer)
         self.search_client = ttk.Entry(content, textvariable=self.search_var)
-        self.search_client.insert(0, "   Αναζήτηση με όνομα ή τηλέφωνο...")
+        self.search_client.insert(0, SEARCH_PLACEHOLDER)
         self.search_client.bind("<FocusIn>", lambda args: self.search_client.delete('0', 'end'))
 
         self.search_client.pack(anchor="w", fill="x", pady=0, ipady=10)
@@ -1110,7 +1118,7 @@ class ClientsPage(tk.Frame):
         
     def on_show(self):
         self.focus_set()  # Αφαιρεί το focus από το search_entry
-        self.search_var.set("   Αναζήτηση με όνομα ή τηλέφωνο...")
+        self.search_var.set(SEARCH_PLACEHOLDER)
         self.load_clients()
 
 
@@ -1202,7 +1210,7 @@ class NewAppointPage(tk.Frame):
         self.search_var = tk.StringVar()
         self.search_var.trace_add('write', self.search_customer)
         self.search_client = ttk.Entry(self.content, textvariable=self.search_var)
-        self.search_client.insert(0, "🔍Επώνυμο & Τηλέφωνο")
+        self.search_client.insert(0, SEARCH_PLACEHOLDER)
         self.search_client.bind("<FocusIn>", lambda args: self.search_client.delete('0', 'end'))
 
         self.search_client.grid(row=0, column=1, sticky="w", pady=10)
@@ -1479,7 +1487,7 @@ class NewAppointPage(tk.Frame):
         for popup in open_popups:
             popup.destroy()
         self.search_client.delete(0, tk.END)  # Καθαρισμός αναζήτησης
-        self.search_client.insert(0, "🔍Επώνυμο & Τηλέφωνο")
+        self.search_client.insert(0, SEARCH_PLACEHOLDER)
         self.l1.place_forget()
         self.scrollbar.place_forget()
         self.close_btn.place_forget()
@@ -1619,7 +1627,7 @@ class NewAppointPage(tk.Frame):
         self.current_customer_id = None
         self.current_appointment_id = None
         self.loaded_customer_name = ""
-        self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
+        self.search_var.set(SEARCH_PLACEHOLDER)
         self.service_dropdown.set("")
         self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
         self.time_dropdown['state'] = 'disabled'
@@ -1649,7 +1657,7 @@ class NewAppointPage(tk.Frame):
             self.current_customer_id = None
             self.current_appointment_id = None
             self.loaded_customer_name = ""
-            self.search_var.set("🔍Επώνυμο & Τηλέφωνο")
+            self.search_var.set(SEARCH_PLACEHOLDER)
             self.appoint_date.set_date(datetime.today().date())  # Επαναφέρει τη σημερινή ημερομηνία
             self.time_dropdown.set("")  # Καθαρίζει την ώρα
             self.service_dropdown.set("")  # Καθαρίζει την υπηρεσία

@@ -1,11 +1,19 @@
 
 import sqlite3
+import unicodedata
 from datetime import datetime, timedelta
 
 
 class AppointmentOverlapError(Exception):
     """Σφάλμα όταν ένα ραντεβού επικαλύπτεται χρονικά με υπάρχον ραντεβού"""
     pass
+
+
+def _normalize(s):
+    """Πεζά, χωρίς τόνους — για σύγκριση ελληνικών ονομάτων."""
+    s = unicodedata.normalize("NFD", s or "")
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    return s.casefold()
 
 
 class Customer:
@@ -111,9 +119,18 @@ class Customer:
 
     @staticmethod
     def matches(customer, term):
-        """Έλεγχος αν ένας πελάτης ταιριάζει με τον όρο αναζήτησης."""
-        q = (term or "").strip().lower()
-        return q in (customer.last_name or "").lower() or q in (customer.phone or "")
+        """Έλεγχος αν ένας πελάτης ταιριάζει με τον όρο αναζήτησης.
+        Ψάχνει σε όνομα, επώνυμο, τηλέφωνο και email, χωρίς ευαισθησία σε
+        τόνους ή πεζά/κεφαλαία. Όροι με κενά (π.χ. ονοματεπώνυμο) σπάνε σε
+        λέξεις και ΟΛΕΣ πρέπει να ταιριάζουν κάπου."""
+        fields = [
+            _normalize(customer.first_name),
+            _normalize(customer.last_name),
+            customer.phone or "",
+            _normalize(customer.email),
+        ]
+        tokens = _normalize(term).split()
+        return all(any(tok in f for f in fields) for tok in tokens)
 
     @staticmethod
     def search(term):
