@@ -4,12 +4,12 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## HARD RULES
 
-# SYNC v1 — mirrored in project instructions; bump on any edit
+<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
 
 - App UI language \= Greek. All in-app text (labels, menus, placeholders) and in-app error/message dialogs shown to the salon end user MUST be Greek, never English. Governs the app only — code comments, commit messages, and replies to the developer stay English.  
 - SMTP creds: entered per-send, memory-only. NEVER persist to disk — no file, no keyring, no env dump, no logging.
 
-# /SYNC v1
+<!-- /SYNC v1 -->
 
 ## FILE MAP
 
@@ -23,14 +23,14 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## DEPS
 
-# SYNC v1 — mirrored in project instructions; bump on any edit
+<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
 
 - stdlib: tkinter, sqlite3, smtplib (smtplib is NOT pip-installable — README is wrong on this)  
 - third-party: tkcalendar, tktooltip, XlsxWriter, sv-ttk (Sun Valley theme; pip name `sv-ttk`, import name `sv_ttk`)  
 - PIL: imported commented-out; not active  
 - Install: `pip install tkcalendar tktooltip XlsxWriter sv-ttk`
 
-# /SYNC v1
+<!-- /SYNC v1 -->
 
 ## RUN / TEST
 
@@ -44,14 +44,14 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## CHANGE DISCIPLINE
 
-# SYNC v1 — mirrored in project instructions; bump on any edit
+<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
 
 - Small, scoped, one concern per change. Reviewable diffs.  
 - Flag any bonus/adjacent fix explicitly. Never bundle silently.  
 - Multi-file/bug work: trace data flow directly across methods (e.g. save path in gui.py → models.py). No shape pattern-matching. Prefer direct file reads over subagent summaries that drop cross-method context.  
 - Before claiming done: show the real diff, run the test/script and show real output, and call out anything that still needs manual GUI testing. Do not assert "passes" without evidence.
 
-# /SYNC v1
+<!-- /SYNC v1 -->
 
 ## KNOWN LANDMINES (snapshot — may lag current code; verify against the actual files, they are the source of truth)
 
