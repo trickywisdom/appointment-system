@@ -7,7 +7,8 @@ This is a simple desktop application for managing appointments using Python and 
 - Add, update and list customers
 - Book and validate appointments
 - Prevent overlapping and invalid time slots
-- Search by date or phone number
+- Search customers by first name, last name, phone or email — insensitive to Greek accents and case
+- Browse appointments by date
 - Export appointments to Excel
 
 ## 💻 Technologies Used
@@ -17,6 +18,8 @@ This is a simple desktop application for managing appointments using Python and 
 - SQLite3
 - XlsxWriter
 - tkcalendar
+- sv-ttk
+- tkinter-tooltip
 
 ## 🗂 Project Structure
 
@@ -25,22 +28,22 @@ appointment-system/
 │
 ├── main.py                # Entry point of the application
 ├── gui.py                 # Graphical interface (Tkinter)
-├── models.py              # Patient & Appointment classes
+├── models.py              # Customer & Appointment classes
 ├── database.py            # Database connection logic
 ├── export_excel.py        # Export appointments to Excel
 ├── emails_utils.py        # Notify customers through email
+├── test_bugfixes.py       # Verification script — plain runnable, no pytest
 ├── salon_appointments.db  # SQLite DB (auto-created)
 ├── README.md              # Project overview
 ├── .gitignore             # Git ignored files
-├── images/                # images for a better looking app
-└── docs/                  # Documentation, diagrams, PDF files
+└── images/                # images for a better looking app
 ```
 
 ## 🚀 Getting Started
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/PLHPRO/appointment-system.git
+git clone https://github.com/trickywisdom/appointment-system.git
 cd appointment-system
 ```
 
@@ -54,13 +57,10 @@ pip install tkcalendar xlsxwriter sv-ttk tkinter-tooltip
 python main.py
 ```
 
-## 👨‍💻 Team Members
+## 👨‍💻 Author
 
-- Member 1: 
-- Member 2: 
-- Member 3: 
-- Member 4: 
+- Spyros Trimis — [github.com/trickywisdom](https://github.com/trickywisdom)
 
 ---
 
-*This project is part of a university assignment.*
+*This project began as a university assignment and is now maintained as a personal portfolio project.*
