@@ -265,17 +265,4 @@ class Appointment:
             print(f"Error fetching all appointments(get_by_customer_id): {e}")
             return []
 
-    @staticmethod
-    def get_all():
-#Εύρεση όλων των ραντεβού
-        try:
-            with sqlite3.connect('salon_appointments.db') as conn:
-                c = conn.cursor()
-                c.execute("SELECT id, customer_id, datetime, services, duration, notes FROM appointments ORDER BY date ASC, time ASC")
-                appointments = [Appointment(row[1], row[2], row[3], row[4], row[5], id=row[0]) for row in c.fetchall()]
-                return appointments
-        except sqlite3.Error as e:
-            print(f"Error fetching all appointments: {e}")
-            return []
-
 

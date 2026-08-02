@@ -726,14 +726,6 @@ class DashboardPage(tk.Frame):
         else:
             self.newclient_btn.place_forget()
 
-    def create_new_client(self, event):
-        """Δημιουργία νέου πελάτη"""
-        widget = event.widget
-        selection = widget.curselection()
-        if selection and widget.get(selection[0]) == "   Ο πελάτης δε βρέθηκε...":
-            self.show_new_client_popup()
-        self.focus_set()
-
     def show_new_client_popup(self):
         """Εμφάνιση popup για δημιουργία νέου πελάτη"""
         popup = tk.Toplevel(self)
@@ -835,15 +827,6 @@ class DashboardPage(tk.Frame):
         self.scrollbar.place_forget()
         self.newclient_btn.place_forget()
         self.focus_set()        
-        
-    def show_all_customers(self):
-        """Επιστροφή λίστας με όλους τους πελάτες (όνομα, επίθετο, τηλέφωνο, id)"""
-        try:
-            customers_list = [(c.first_name, c.last_name, c.phone, c.id) for c in Customer.get_all()]
-            return customers_list
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
-            return []
         
     def on_show(self):
         """Επαναφέρει τα πεδία όταν ανοίγει η σελίδα."""
@@ -1429,14 +1412,6 @@ class NewAppointPage(tk.Frame):
         else:
             self.newclient_btn.place_forget()
 
-    def create_new_client(self, event):
-        
-        widget = event.widget
-        selection = widget.curselection()
-        if selection and widget.get(selection[0]) == "   Ο πελάτης δε βρέθηκε...": # Έλεγχος αν επιλέχθηκε το self.l1.insert(tk.END, "   Ο πελάτης δε βρέθηκε...")
-            self.show_new_client_popup()
-        self.focus_set()
-
     def show_new_client_popup(self):
         popup = tk.Toplevel(self)
         popup.title("Νέος Πελάτης")
@@ -1638,16 +1613,6 @@ class NewAppointPage(tk.Frame):
         self.close_btn.place_forget()
         self.newclient_btn.place_forget()
 
-
-    def show_all_customers(self):
-        try:
-            customers_list = [(c.first_name, c.last_name, c.phone, c.id) for c in Customer.get_all()]
-            return customers_list
-        
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
-            return []
-        
 
     def on_show(self):
         """Καθαρίζει τα πεδία όταν ανοίγει η σελίδα."""
