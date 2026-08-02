@@ -4,12 +4,12 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## HARD RULES
 
-<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
+<!-- SYNC v2 — mirrored in project instructions; bump on any edit -->
 
-- App UI language \= Greek. All in-app text (labels, menus, placeholders) and in-app error/message dialogs shown to the salon end user MUST be Greek, never English. Governs the app only — code comments, commit messages, and replies to the developer stay English.  
+- App UI language \= Greek. All in-app text (labels, menus, placeholders) and in-app error/message dialogs shown to the salon end user MUST be Greek, never English. Governs the app only — these stay English: code comments, commit messages, replies to the developer, `state.md`, `build-diary.md`.  
 - SMTP creds: entered per-send, memory-only. NEVER persist to disk — no file, no keyring, no env dump, no logging.
 
-<!-- /SYNC v1 -->
+<!-- /SYNC v2 -->
 
 ## FILE MAP
 
@@ -23,14 +23,15 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## DEPS
 
-<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
+<!-- SYNC v2 — mirrored in project instructions; bump on any edit -->
 
 - stdlib: tkinter, sqlite3, smtplib (smtplib is NOT pip-installable — README is wrong on this)  
-- third-party: tkcalendar, tktooltip, XlsxWriter, sv-ttk (Sun Valley theme; pip name `sv-ttk`, import name `sv_ttk`)  
+- third-party: tkcalendar, XlsxWriter, sv-ttk (Sun Valley theme; pip name `sv-ttk`, import name `sv_ttk`), tkinter-tooltip (pip name `tkinter-tooltip`, import name `tktooltip`)  
 - PIL: imported commented-out; not active  
-- Install: `pip install tkcalendar tktooltip XlsxWriter sv-ttk`
+- Install: `pip install tkcalendar tkinter-tooltip XlsxWriter sv-ttk`  
+- TRAP: `pip install tktooltip` also resolves on PyPI, but to a DIFFERENT project — TkToolTip 1.2.0, by a different author, whose top-level package is `TkToolTip/`. It installs successfully and then `from tktooltip import ToolTip` (gui.py) fails on case-sensitive filesystems, or silently imports a different author's API on Windows. Always install `tkinter-tooltip`. `main.py`'s `required_modules` is keyed correctly: `'tktooltip': 'tkinter-tooltip'` (key \= import name, value \= pip name).
 
-<!-- /SYNC v1 -->
+<!-- /SYNC v2 -->
 
 ## RUN / TEST
 
@@ -44,21 +45,24 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 
 ## CHANGE DISCIPLINE
 
-<!-- SYNC v1 — mirrored in project instructions; bump on any edit -->
+<!-- SYNC v2 — mirrored in project instructions; bump on any edit -->
 
 - Small, scoped, one concern per change. Reviewable diffs.  
 - Flag any bonus/adjacent fix explicitly. Never bundle silently.  
 - Multi-file/bug work: trace data flow directly across methods (e.g. save path in gui.py → models.py). No shape pattern-matching. Prefer direct file reads over subagent summaries that drop cross-method context.  
-- Before claiming done: show the real diff, run the test/script and show real output, and call out anything that still needs manual GUI testing. Do not assert "passes" without evidence.
+- Before claiming done: show the real diff, run the test/script and show real output, and call out anything that still needs manual GUI testing. Do not assert "passes" without evidence.  
+- Tests must be proven non-vacuous: break the fix, confirm the test goes red, restore. A green test that has never been seen red proves nothing.  
+- One commit per fix.  
+- Manual verification happens BEFORE the commit, not after — every commit should describe something actually seen working.
 
-<!-- /SYNC v1 -->
+<!-- /SYNC v2 -->
 
 ## KNOWN LANDMINES (snapshot — may lag current code; verify against the actual files, they are the source of truth)
 
 - Overlap validation is enforced in `models.Appointment.save_to_db` (`find_overlap` \+ `AppointmentOverlapError`, interval test on stored duration). DO NOT reintroduce dropdown-only checking or bypass this choke point.  
 - Customer search normalizes both sides for comparison in `models._normalize`: NFD, strip combining marks, casefold — so accents and case do not matter. `models.Customer.matches` searches first name, last name, phone and email; the phone is deliberately NOT normalized. A term containing spaces splits into tokens and ALL tokens must match some field, so a full name works in either word order and partial tokens work. An empty term yields zero tokens and `all([])` is True, so everyone matches — the pages rely on this for show-all, and any rewrite must preserve it.  
 - `SEARCH_PLACEHOLDER` (`gui.py`, module level) is written into the traced `search_var` at NINE sites — six via `Entry.insert` on a `textvariable`-bound widget, three via `search_var.set` — so the placeholder text is itself a live search term on every page. It is inert only because of the `🔍` and the comma in `"Όνομα,"`; the tokens `η` and `email` would otherwise match real customers. Changing the wording requires re-verifying it matches no customer.  
-- The not-found branch of `search_customer` (both listbox pages) never rebinds `<<ListboxSelect>>`, so the binding from the previous call survives with a stale closure over the OLD filtered list. That branch is entered after every successful selection, then hidden.  
+- The not-found branch of `search_customer` (both listbox pages) never rebinds `<<ListboxSelect>>`, so the binding from the previous call survives with a stale closure over the OLD filtered list. The mechanism is still there, but since 39b6899 it is no longer routinely entered: selecting a customer writes the full name back into `search_var`, and the re-query now MATCHES that full name (tokenized, both tokens hit), so the else-branch runs and the binding is refreshed. The branch is now reached only by typing a term that matches nobody — where `<Button-1>` is bound to `"break"`, so a real click cannot set a selection.  
 - `export_excel.export_customer_appointments` has three defects: it calls a nonexistent `Appointment.get_by_customer` (real name is `get_by_customer_id`), writes `appt.datetime` into BOTH the date and the time column, and still contains a `print("So far so good3:")` debug line. Uncalled from anywhere.  
 - Frozen `datetime.today()` default arguments in `CalendarView.build_grid` / `load_appointments` — evaluated once at import, so an app left running past midnight keeps showing launch day as "today".  
 - `gui.py` quality debt: `search_customer` ×3, `show_new_client_popup`/`on_popup_close` ×2; `service_durations` defined twice (dict in `get_time_options` vs if/elif chain in `save_appoint` — can drift); English `"Error"` dialogs inside the Greek UI (×6), one of which reports "Failed to fetch customers" while actually fetching appointments.  
