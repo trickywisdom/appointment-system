@@ -5,3 +5,6 @@ __pycache__/
 /docs
 /gui
 /giazip
+venv/
+.venv/
+env/
