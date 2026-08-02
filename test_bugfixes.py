@@ -447,13 +447,16 @@ if app is not None:
         return rows
 
     NOT_FOUND = ("   Ο πελάτης δε βρέθηκε...",)
+    # Η γραμμή του listbox δείχνει πλέον ΚΑΙ το τηλέφωνο· η ταυτότητα όμως δεν προκύπτει
+    # από αυτό το κείμενο (βλ. το decoupling block στο τέλος της ενότητας).
+    FIXTURE_ROW = (" Ελένη Παπαδοπούλου — 6971234567",)
 
     # (query, mode, αναμενόμενο για listbox σελίδες, αναμενόμενο για ClientsPage)
     QUERIES = [
         # κενός όρος -> εμφανίζονται όλοι
         ("",                    "count",    None,                        None),
         # POSITIVE CONTROL: το επώνυμο ακριβώς όπως είναι αποθηκευμένο
-        ("παπαδοπούλου",        "equals",   (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+        ("παπαδοπούλου",        "equals",   FIXTURE_ROW,                 ["Παπαδοπούλου"]),
         # χωρίς τόνο -> δεν βρίσκει (ευαισθησία σε τόνους)
         ("παπαδοπουλου",        "equals",   NOT_FOUND,                   []),
         # κεφαλαία -> δεν βρίσκει (το .lower() των κεφαλαίων χάνει τον τόνο)
@@ -465,9 +468,9 @@ if app is not None:
         # πλήρες ονοματεπώνυμο -> δεν ψάχνεται
         ("Ελένη Παπαδοπούλου",  "equals",   NOT_FOUND,                   []),
         # τηλέφωνο ακριβώς -> βρίσκει
-        ("6971234567",          "equals",   (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+        ("6971234567",          "equals",   FIXTURE_ROW,                 ["Παπαδοπούλου"]),
         # τμήμα τηλεφώνου -> βρίσκει
-        ("697123",              "contains", (" Ελένη Παπαδοπούλου",),    ["Παπαδοπούλου"]),
+        ("697123",              "contains", FIXTURE_ROW,                 ["Παπαδοπούλου"]),
     ]
 
     PAGES = [
@@ -494,6 +497,39 @@ if app is not None:
             else:
                 check(f"{label} -> περιέχει {expected}",
                       all(e in got for e in expected), f"(got={got})")
+
+    # --- Decoupling: η ταυτότητα του πελάτη ΔΕΝ προκύπτει από το κείμενο της γραμμής ---
+    # Φρουρεί το invariant του a30fc3e: το save_appoint δέχεται τον πελάτη μόνο αν
+    # selected_name == το κείμενο του πεδίου. Αν το selected_name έπαιρνε το κείμενο της
+    # γραμμής (με τηλέφωνο και παύλα), κάθε επιλογή θα περνούσε για "ελεύθερο κείμενο".
+    # Χρειάζεται πραγματική παράδοση events, όπως στην [7].
+    app.deiconify()
+    app.update()
+
+    for page_name in ("DashboardPage", "NewAppointPage"):
+        app.show_frame(page_name)
+        app.update()
+        pg = app.get_frame(page_name)
+
+        pg.search_var.set("παπαδοπούλου")
+        app.update()
+        check(f"{page_name}: το listbox έχει ακριβώς 1 γραμμή προς επιλογή",
+              pg.l1.size() == 1, f"(rows={tuple(pg.l1.get(0, tk.END))})")
+
+        pg.l1.selection_set(0)
+        pg.l1.event_generate("<<ListboxSelect>>")
+        app.update()
+
+        check(f"{page_name}: selected_name = σκέτο όνομα, χωρίς τηλέφωνο/παύλα "
+              f"(invariant a30fc3e)",
+              pg.selected_name == "Ελένη Παπαδοπούλου", f"(got={pg.selected_name!r})")
+        check(f"{page_name}: το πεδίο αναζήτησης δείχνει σκέτο όνομα "
+              f"(invariant a30fc3e)",
+              pg.search_var.get() == "Ελένη Παπαδοπούλου", f"(got={pg.search_var.get()!r})")
+        check(f"{page_name}: selected_id = id του fixture (ταυτότητα από το tuple)",
+              pg.selected_id == fixture.id, f"(got={pg.selected_id})")
+
+    app.withdraw()
 
 # ---------------------------------------------------------------------------
 if app is not None:

@@ -657,9 +657,9 @@ class DashboardPage(tk.Frame):
             index = int(selection[0])
             customer = filtered_customers[index]
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
-            value = my_w.get(index).strip()
-            self.selected_name = value
-            self.search_var.set(value)
+            full_name = f"{customer[0]} {customer[1]}"
+            self.selected_name = full_name
+            self.search_var.set(full_name)
             self.l1.place_forget()
             self.close_btn.place_forget()
             self.scrollbar.place_forget()
@@ -686,8 +686,7 @@ class DashboardPage(tk.Frame):
             self.l1.unbind("<Double-Button-1>")
             self.l1.unbind("<Return>")
             for customer in filtered_customers:
-                full_name = f"{customer[0]} {customer[1]}"
-                self.l1.insert(tk.END,f" {full_name}")
+                self.l1.insert(tk.END, f" {customer[0]} {customer[1]} — {customer[2]}")
             self.l1.bind("<<ListboxSelect>>", my_upd)
             
         # Διαμόρφωση εμφάνισης λίστας
@@ -1367,9 +1366,9 @@ class NewAppointPage(tk.Frame):
             index = int(selection[0])
             customer = filtered_customers[index]
             self.selected_id = customer[3] # είναι το customer_id που αντιστοιχεί στο συγκεκριμένο index της listbox
-            value = my_w.get(index).strip()
-            self.selected_name = value
-            self.search_var.set(value)
+            full_name = f"{customer[0]} {customer[1]}"
+            self.selected_name = full_name
+            self.search_var.set(full_name)
             self.l1.place_forget()
             self.scrollbar.place_forget()
             self.close_btn.place_forget()
@@ -1391,8 +1390,7 @@ class NewAppointPage(tk.Frame):
             self.l1.unbind("<Double-Button-1>")
             self.l1.unbind("<Return>")
             for customer in filtered_customers:
-                full_name = f"{customer[0]} {customer[1]}"
-                self.l1.insert(tk.END,f" {full_name}")
+                self.l1.insert(tk.END, f" {customer[0]} {customer[1]} — {customer[2]}")
             self.l1.bind("<<ListboxSelect>>", my_upd)
 
         for row_index in range(len(filtered_customers)):
