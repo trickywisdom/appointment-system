@@ -991,7 +991,7 @@ class ClientsPage(tk.Frame):
                     fg="#242525",
                     activeforeground="#4CAF50",
                     background=bg,
-                    command=lambda c=customer: self.controller.get_frame("ShowClientPage").customer_info(c[0], c[1], c[2], c[3], c[4]),
+                    command=lambda c=customer: self.controller.get_frame("ShowClientPage").customer_info(c[4]),
                     width=3,
                     relief="flat",
                     cursor="hand2",
@@ -1072,7 +1072,7 @@ class ClientsPage(tk.Frame):
                     fg="#242525",
                     activeforeground="#4CAF50",
                     background=bg,
-                    command=lambda c=customer: self.controller.get_frame("ShowClientPage").customer_info(c[0], c[1], c[2], c[3], c[4]),
+                    command=lambda c=customer: self.controller.get_frame("ShowClientPage").customer_info(c[4]),
                     width=3,
                     relief="flat",
                     cursor="hand2",
@@ -1887,14 +1887,16 @@ class ShowClientPage(tk.Frame):
         self.after(100, self.scroll_to_target)
         self.highlight_target_row()
 
-    def customer_info(self, first_name, last_name, phone, email, id):
-
-        full_name = f"{first_name} {last_name}"
+    def customer_info(self, customer_id):
+        customer = Customer.get_customer_by_id(customer_id)
+        if not customer:
+            messagebox.showerror("Σφάλμα", "Δεν βρέθηκε ο πελάτης")
+            return
+        full_name = f"{customer.first_name} {customer.last_name}"
         self.client_name.config(text=full_name)
-        self.contact_phone.config(text=phone)
-        self.contact_email.config(text=email)
-        
-        self.appoints_list = self.get_appoints_from_id(id)
+        self.contact_phone.config(text=customer.phone)
+        self.contact_email.config(text=customer.email)
+        self.appoints_list = self.get_appoints_from_id(customer_id)
         self.show_appointments()
         self.controller.show_frame("ShowClientPage")
 
