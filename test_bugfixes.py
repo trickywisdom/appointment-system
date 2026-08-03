@@ -543,6 +543,26 @@ if app is not None:
         check(f"{page_name}: selected_id = id του fixture (ταυτότητα από το tuple)",
               pg.selected_id == fixture.id, f"(got={pg.selected_id})")
 
+        # --- Οι δύο σελίδες πρέπει πλέον να συμπεριφέρονται ΔΙΑΦΟΡΕΤΙΚΑ μετά την επιλογή ---
+        if page_name == "DashboardPage":
+            # Η επιλογή στο Dashboard ανοίγει την καρτέλα του πελάτη.
+            sp = app.get_frame("ShowClientPage")
+            check("DashboardPage: η επιλογή πλοηγεί στη ShowClientPage",
+                  app.current_frame is sp,
+                  f"(current_frame={type(app.current_frame).__name__})")
+            check("DashboardPage: η ShowClientPage δείχνει το όνομα του πελάτη",
+                  sp.client_name.cget("text") == "Ελένη Παπαδοπούλου",
+                  f"(got={sp.client_name.cget('text')!r})")
+            check("DashboardPage: η ShowClientPage δείχνει το τηλέφωνο του πελάτη",
+                  sp.contact_phone.cget("text") == "6971234567",
+                  f"(got={sp.contact_phone.cget('text')!r})")
+        else:
+            # REGRESSION GUARD: στο Νέο Ραντεβού η επιλογή τροφοδοτεί τη φόρμα και
+            # ΔΕΝ πρέπει να πλοηγεί πουθενά.
+            check("NewAppointPage: η επιλογή ΔΕΝ πλοηγεί (μένουμε στη φόρμα)",
+                  app.current_frame is pg,
+                  f"(current_frame={type(app.current_frame).__name__})")
+
     app.withdraw()
 
 # ---------------------------------------------------------------------------

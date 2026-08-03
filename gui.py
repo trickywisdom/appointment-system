@@ -673,6 +673,9 @@ class DashboardPage(tk.Frame):
             self.scrollbar.place_forget()
             self.newclient_btn.place_forget()
             self.focus_set()
+            # Αφού έχει κλείσει το dropdown, ανοίγουμε την καρτέλα του πελάτη.
+            # Η customer_info κάνει η ίδια το show_frame στην τελευταία της γραμμή.
+            self.controller.get_frame("ShowClientPage").customer_info(customer[3])
 
         self.l1.delete(0, 'end')
 
