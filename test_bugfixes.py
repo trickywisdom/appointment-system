@@ -11,7 +11,7 @@
 import os
 import sys
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -562,6 +562,96 @@ if app is not None:
             check("NewAppointPage: η επιλογή ΔΕΝ πλοηγεί (μένουμε στη φόρμα)",
                   app.current_frame is pg,
                   f"(current_frame={type(app.current_frame).__name__})")
+
+    # --- Κουμπί "Νέο ραντεβού" στη ShowClientPage: προ-συμπλήρωση πελάτη ---
+    # Η on_show είναι deferred ΚΑΙ κατασταλμένη από το editing=True, οπότε η φόρμα κρατά
+    # ό,τι άφησε η προηγούμενη επίσκεψη· η customer path πρέπει να την ανοίγει καθαρή.
+    sp = app.get_frame("ShowClientPage")
+    na = app.get_frame("NewAppointPage")
+    sp.customer_info(fixture.id)
+    app.update()
+
+    check("ShowClientPage: θυμάται το id του πελάτη που δείχνει",
+          sp.current_customer_id == fixture.id, f"(got={sp.current_customer_id})")
+    check("ShowClientPage: θυμάται το όνομα του πελάτη που δείχνει",
+          sp.current_customer_name == "Ελένη Παπαδοπούλου",
+          f"(got={sp.current_customer_name!r})")
+
+    # Σπέρνουμε ΕΠΙΤΗΔΕΣ μπαγιάτικη κατάσταση πριν πατηθεί το κουμπί.
+    # Η μπαγιάτικη ημερομηνία παράγεται από το σήμερα, ώστε να μη συμπέσει ποτέ με αυτό.
+    TODAY_STR = datetime.today().strftime("%d-%m-%Y")
+    STALE_DATE = datetime.today().date() + timedelta(days=30)
+    STALE_STR = STALE_DATE.strftime("%d-%m-%Y")
+    na.appoint_date.set_date(STALE_DATE)
+    na.time_dropdown.set("15:20")
+    app.update()
+    # Θετικός έλεγχος: αν δεν "κόλλησε" η μπαγιάτικη κατάσταση, οι δύο guards παρακάτω
+    # θα περνούσαν κενά.
+    check("το μπαγιάτικο date/time όντως σπάρθηκε πριν το κουμπί",
+          na.appoint_date.get() == STALE_STR and na.time_dropdown.get() == "15:20",
+          f"(date={na.appoint_date.get()!r} time={na.time_dropdown.get()!r}, "
+          f"περιμέναμε {STALE_STR!r}/'15:20')")
+
+    # Πατάμε το ΠΡΑΓΜΑΤΙΚΟ κουμπί, όχι τη μέθοδο — έτσι ελέγχεται και το lambda του command
+    # (σωστά keywords, σωστά attributes της ShowClientPage).
+    NEW_APPT_BTN_TEXT = "➕ Νέο ραντεβού"
+
+    def find_new_appt_button(page):
+        # Ακριβής σύγκριση, όχι substring: μελλοντικό widget που απλώς περιέχει τη φράση
+        # δεν πρέπει να επιλέγεται σιωπηλά στη θέση του κουμπιού.
+        def walk(w):
+            yield w
+            for child in w.winfo_children():
+                yield from walk(child)
+        for w in walk(page):
+            try:
+                if str(w.cget("text")).strip() == NEW_APPT_BTN_TEXT:
+                    return w
+            except Exception:
+                continue
+        return None
+
+    new_appt_btn = find_new_appt_button(sp)
+    # Χωρίς αυτόν τον έλεγχο, ένας finder που δεν βρίσκει τίποτα θα ακύρωνε σιωπηλά
+    # όλους τους επόμενους ελέγχους.
+    check(f"βρέθηκε το κουμπί {NEW_APPT_BTN_TEXT!r} στη ShowClientPage",
+          new_appt_btn is not None)
+
+    if new_appt_btn is None:
+        # Καθαρή αναφορά αντί για AttributeError που θα διέκοπτε την υπόλοιπη ενότητα.
+        print(f"  ΠΑΡΑΛΕΙΨΗ: δεν βρέθηκε το κουμπί {NEW_APPT_BTN_TEXT!r} — "
+              f"οι έλεγχοι prefill ΔΕΝ εκτελέστηκαν")
+    else:
+        new_appt_btn.invoke()
+        app.update()
+
+        check("prefill: το πεδίο πελάτη δείχνει το όνομα του πελάτη",
+              na.search_var.get() == "Ελένη Παπαδοπούλου", f"(got={na.search_var.get()!r})")
+        check("prefill: loaded_customer_name = το όνομα (branch 2 του guard)",
+              na.loaded_customer_name == "Ελένη Παπαδοπούλου",
+              f"(got={na.loaded_customer_name!r})")
+        check("prefill: current_customer_id = id του fixture (branch 2)",
+              na.current_customer_id == fixture.id, f"(got={na.current_customer_id})")
+        check("prefill: selected_id είναι None (branch 2, ΟΧΙ branch 1)",
+              na.selected_id is None, f"(got={na.selected_id})")
+        check("prefill: η ημερομηνία μηδενίζεται στο σήμερα (stale-date guard)",
+              na.appoint_date.get() == TODAY_STR,
+              f"(got={na.appoint_date.get()!r}, σήμερα={TODAY_STR})")
+        check("prefill: η ώρα καθαρίζεται (stale-time guard)",
+              na.time_dropdown.get() == "", f"(got={na.time_dropdown.get()!r})")
+        check("prefill: πλοηγούμαστε στη NewAppointPage",
+              app.current_frame is na, f"(current_frame={type(app.current_frame).__name__})")
+
+    # REGRESSION GUARD για την αλλαγή υπογραφής: η θετική κλήση από το ημερολόγιο
+    # create_new_appointment(date, time) πρέπει να συνεχίσει να δουλεύει αμετάβλητη.
+    SLOT_DATE = datetime(2026, 9, 11).date()
+    na.create_new_appointment(SLOT_DATE, "11:00")
+    app.update()
+    check("slot path: η θέση των date/time δεν μετακινήθηκε από τα νέα ορίσματα",
+          na.appoint_date.get() == "11-09-2026" and na.time_dropdown.get() == "11:00",
+          f"(date={na.appoint_date.get()!r} time={na.time_dropdown.get()!r})")
+    check("slot path: χωρίς customer_id δεν στήνεται branch 2",
+          na.current_customer_id is None, f"(got={na.current_customer_id})")
 
     app.withdraw()
 

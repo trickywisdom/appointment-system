@@ -1595,11 +1595,13 @@ class NewAppointPage(tk.Frame):
         self.close_btn.place_forget()
         self.newclient_btn.place_forget()
         
-    def create_new_appointment(self, date, time):
-        
+    def create_new_appointment(self, date=None, time=None, customer_id=None, customer_name=None):
+
         self.editing = True
-        self.appoint_date.set_date(date)
-        self.time_dropdown.set(time)
+        if date is not None:
+            self.appoint_date.set_date(date)
+        if time is not None:
+            self.time_dropdown.set(time)
         self.selected_name = ""
         self.selected_id = None
         self.current_customer_id = None
@@ -1609,6 +1611,21 @@ class NewAppointPage(tk.Frame):
         self.service_dropdown.set("")
         self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
         self.time_dropdown['state'] = 'disabled'
+        if customer_id is not None:
+            # Η on_show είναι deferred ΚΑΙ κατασταλμένη από το editing=True, οπότε η ημερομηνία
+            # και η ώρα κρατούν ό,τι άφησε η προηγούμενη επίσκεψη (επιβεβαιωμένο: επιβιώνουν).
+            # Ανοίγουμε τη φόρμα σε ορισμένη κατάσταση.
+            self.appoint_date.set_date(datetime.today().date())
+            self.time_dropdown.set("")
+            # Προ-συμπλήρωση πελάτη: στήνουμε το branch 2 του guard της save_appoint
+            # (current_customer_id + loaded_customer_name). Το selected_id/selected_name
+            # καθαρίζονται ρητά, όπως στην edit_appoint, ώστε μπαγιάτικη επιλογή από
+            # προηγούμενη επίσκεψη να μην κερδίσει το branch 1 με όνομα που δεν διάλεξε ο χρήστης.
+            self.selected_id = None
+            self.selected_name = ""
+            self.current_customer_id = customer_id
+            self.loaded_customer_name = (customer_name or "").strip()
+            self.search_var.set(self.loaded_customer_name)
         self.controller.show_frame("NewAppointPage")
         self.focus_set()
         self.l1.place_forget()
@@ -1768,6 +1785,10 @@ class ShowClientPage(tk.Frame):
         super().__init__(parent)
         self.controller = controller
 
+        # Ποιον πελάτη δείχνει αυτή τη στιγμή η σελίδα (τα ορίζει η customer_info)
+        self.current_customer_id = None
+        self.current_customer_name = ""
+
         content = ttk.Frame(self)
         content.pack(fill="both", expand=True, padx=(150,150), pady=10, anchor="center")
         
@@ -1827,7 +1848,13 @@ class ShowClientPage(tk.Frame):
         for col in range(3):
             self.scrollable_frame.grid_columnconfigure(col, weight=col+1)
 
-        ttk.Button(content, text="⬅️ Επιστοφή στη Διαχείριση Πελατών", command=lambda: controller.show_frame("ClientsPage")).pack(anchor="s", pady=(15,10)) # .grid(row=4, column=0, sticky="S", pady=(15,10))
+        btn_row = ttk.Frame(content)
+        btn_row.pack(anchor="s", pady=(15,10))
+        ttk.Button(btn_row, text="⬅️ Επιστοφή στη Διαχείριση Πελατών", command=lambda: controller.show_frame("ClientsPage")).pack(side="left", padx=(0,8))
+        ttk.Button(btn_row, text="➕ Νέο ραντεβού", style='Accent.TButton',
+                   command=lambda: self.controller.get_frame("NewAppointPage").create_new_appointment(
+                       customer_id=self.current_customer_id,
+                       customer_name=self.current_customer_name)).pack(side="left")
 
     def find_best_matching_item(self, today):
         future_dates = sorted([x for x in self.items if x[0] >= today], key=lambda x: x[0])
@@ -1896,6 +1923,9 @@ class ShowClientPage(tk.Frame):
             messagebox.showerror("Σφάλμα", "Δεν βρέθηκε ο πελάτης")
             return
         full_name = f"{customer.first_name} {customer.last_name}"
+        # Κρατάμε ποιον πελάτη δείχνουμε, για το κουμπί "Νέο ραντεβού"
+        self.current_customer_id = customer.id
+        self.current_customer_name = full_name
         self.client_name.config(text=full_name)
         self.contact_phone.config(text=customer.phone)
         self.contact_email.config(text=customer.email)
