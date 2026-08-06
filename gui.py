@@ -651,7 +651,7 @@ class DashboardPage(tk.Frame):
                 for c in Customer.search(self.query)
             ]
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης πελατών: {e}")
             filtered_customers = []
 
         def my_upd(my_widget):
@@ -932,7 +932,7 @@ class ClientsPage(tk.Frame):
                 for c in Customer.search(query)
             ]
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης πελατών: {e}")
             filtered_customers = []
 
         # Καθαρισμός παλιών widgets
@@ -1105,7 +1105,7 @@ class ClientsPage(tk.Frame):
             return customers_list
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης πελατών: {e}")
             return []
         
     def on_show(self):
@@ -1353,7 +1353,7 @@ class NewAppointPage(tk.Frame):
                 for c in Customer.search(self.query)
             ]
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης πελατών: {e}")
             filtered_customers = []
 
         def my_upd(my_widget):
@@ -1976,9 +1976,10 @@ class ShowClientPage(tk.Frame):
 
             appoints_list = new_appoints_list
 
-            return appoints_list      
+            return appoints_list
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch customers: {e}")
+            # Η μέθοδος φέρνει ΡΑΝΤΕΒΟΥ, όχι πελάτες — το παλιό μήνυμα έλεγε λάθος ουσιαστικό.
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης ραντεβού: {e}")
             return []
 
             
@@ -2137,7 +2138,7 @@ class RemindersPage(tk.Frame):
             return appointments
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch appointments: {e}")
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης ραντεβού: {e}")
             return []
 
 ### Κώδικας Σοφοκλή
