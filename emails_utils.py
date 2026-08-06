@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import models
+from greek_text import GREEK_DAYS
 
 
 class EmailSender:
@@ -32,7 +33,10 @@ class EmailSender:
             appointment_datetime_obj = datetime.strptime(appointment_time, "%Y-%m-%d %H:%M")
             time_str = appointment_datetime_obj.strftime('%H:%M')
             date_str = appointment_datetime_obj.strftime('%d/%m/%Y')
-            day_name = appointment_datetime_obj.strftime('%A')
+            # ΟΧΙ strftime('%A'): διαβάζει το LC_TIME και σε μηχάνημα χωρίς ελληνικό locale
+            # θα έστελνε «Thursday» στο inbox του πελάτη. Μπαίνει και στα δύο σώματα του
+            # μηνύματος (HTML και plain text) παρακάτω.
+            day_name = GREEK_DAYS[appointment_datetime_obj.weekday()]
 
             # HTML περιεχόμενο
             html = f"""

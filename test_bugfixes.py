@@ -23,6 +23,7 @@ workdir = tempfile.mkdtemp(prefix="appt_test_")
 os.chdir(workdir)
 
 import database
+import greek_text  # leaf module: οι ελληνικοί πίνακες ημερών/μηνών ζουν εδώ, όχι στο gui
 from models import Customer, Appointment, AppointmentOverlapError, CustomerValidationError
 
 passed = 0
@@ -1191,22 +1192,22 @@ try:
 
     # (α) οι πίνακες είναι πλήρεις και ελληνικοί
     check("[13] GREEK_DAYS: 7 ελληνικά ονόματα",
-          len(gui.GREEK_DAYS) == 7 and all(is_greek(d) for d in gui.GREEK_DAYS),
-          f"({gui.GREEK_DAYS})")
+          len(greek_text.GREEK_DAYS) == 7 and all(is_greek(d) for d in greek_text.GREEK_DAYS),
+          f"({greek_text.GREEK_DAYS})")
     check("[13] GREEK_DAYS_SHORT: 7 ελληνικές συντομεύσεις",
-          len(gui.GREEK_DAYS_SHORT) == 7 and all(is_greek(d) for d in gui.GREEK_DAYS_SHORT),
-          f"({gui.GREEK_DAYS_SHORT})")
+          len(greek_text.GREEK_DAYS_SHORT) == 7 and all(is_greek(d) for d in greek_text.GREEK_DAYS_SHORT),
+          f"({greek_text.GREEK_DAYS_SHORT})")
     check("[13] GREEK_MONTHS_SHORT: 12 ελληνικές συντομεύσεις",
-          len(gui.GREEK_MONTHS_SHORT) == 12
-          and all(is_greek(m) for m in gui.GREEK_MONTHS_SHORT),
-          f"({gui.GREEK_MONTHS_SHORT})")
+          len(greek_text.GREEK_MONTHS_SHORT) == 12
+          and all(is_greek(m) for m in greek_text.GREEK_MONTHS_SHORT),
+          f"({greek_text.GREEK_MONTHS_SHORT})")
     # η αντιστοίχιση δείκτη είναι σωστή: 2026-08-06 είναι Πέμπτη
     check("[13] ο δείκτης weekday() δείχνει τη σωστή ημέρα",
-          gui.GREEK_DAYS[datetime(2026, 8, 6).weekday()] == "Πέμπτη",
-          f"(got={gui.GREEK_DAYS[datetime(2026, 8, 6).weekday()]!r})")
+          greek_text.GREEK_DAYS[datetime(2026, 8, 6).weekday()] == "Πέμπτη",
+          f"(got={greek_text.GREEK_DAYS[datetime(2026, 8, 6).weekday()]!r})")
     check("[13] ο δείκτης μήνα δείχνει τον σωστό μήνα",
-          gui.GREEK_MONTHS_SHORT[8 - 1] == "Αυγ",
-          f"(got={gui.GREEK_MONTHS_SHORT[8 - 1]!r})")
+          greek_text.GREEK_MONTHS_SHORT[8 - 1] == "Αυγ",
+          f"(got={greek_text.GREEK_MONTHS_SHORT[8 - 1]!r})")
 
     if app is not None:
         dash = app.get_frame("DashboardPage")
@@ -1273,6 +1274,52 @@ try:
             check("[13] ημερολόγιο: το αριθμητικό μέρος της ημέρας διατηρήθηκε",
                   all(t.split()[-1].isdigit() for t in day_txts if t.split()),
                   f"(got={day_txts})")
+
+    # --- (δ) ΤΟ EMAIL ΤΟΥ ΠΕΛΑΤΗ: το χειρότερο σημείο, γιατί δεν φαίνεται στην οθόνη
+    # του κομμωτηρίου. Το day_name μπαίνει ΚΑΙ στο HTML ΚΑΙ στο plain text σώμα.
+    import emails_utils as _eu
+
+    class _FakeSMTP:
+        """Αντικαθιστά το smtplib.SMTP: πιάνει το μήνυμα ΧΩΡΙΣ δίκτυο και χωρίς credentials."""
+        captured = []
+        def __init__(self, *a, **k):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *exc):
+            return False
+        def starttls(self):
+            pass
+        def login(self, *a, **k):
+            pass
+        def send_message(self, msg):
+            _FakeSMTP.captured.append(msg)
+
+    _real_smtp = _eu.smtplib.SMTP
+    _eu.smtplib.SMTP = _FakeSMTP
+    try:
+        _FakeSMTP.captured.clear()
+        ok, info = _eu.EmailSender(email="a@b.gr", password="x").send_reminder(
+            "pelatis@paradeigma.gr", "Ελένη Παπαδοπούλου", "2026-08-06 11:00", "Κούρεμα")
+        check("[13] email: το μήνυμα χτίστηκε και «στάλθηκε» (χωρίς δίκτυο)",
+              ok and len(_FakeSMTP.captured) == 1, f"(ok={ok}, info={info!r})")
+    finally:
+        _eu.smtplib.SMTP = _real_smtp
+
+    if _FakeSMTP.captured:
+        msg = _FakeSMTP.captured[0]
+        bodies = {}
+        for part in msg.walk():
+            if part.get_content_maintype() == "text":
+                bodies[part.get_content_subtype()] = part.get_payload(decode=True).decode("utf-8")
+        check("[13] email: υπάρχουν και τα δύο σώματα (plain + html)",
+              "plain" in bodies and "html" in bodies, f"(got={sorted(bodies)})")
+        for kind in ("plain", "html"):
+            body = bodies.get(kind, "")
+            check(f"[13] email ({kind}): η ημέρα είναι ΕΛΛΗΝΙΚΑ υπό ξένο locale",
+                  "Πέμπτη" in body, f"(απόσπασμα={body[body.find('Ημερομηνία'):][:60]!r})")
+            check(f"[13] email ({kind}): δεν στέλνεται αγγλικό όνομα ημέρας",
+                  "Thursday" not in body, f"(βρέθηκε 'Thursday' στο σώμα {kind})")
 finally:
     _locale.setlocale(_locale.LC_TIME, _saved_locale)
 

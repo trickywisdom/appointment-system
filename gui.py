@@ -5,6 +5,7 @@ from tkinter import messagebox, ttk, PhotoImage
 import database
 import models
 from models import Customer, Appointment, AppointmentOverlapError, CustomerValidationError
+from greek_text import GREEK_DAYS, GREEK_DAYS_SHORT, GREEK_MONTHS_SHORT
 from tkcalendar import DateEntry
 from tkcalendar import Calendar
 from datetime import datetime, timedelta
@@ -22,21 +23,6 @@ import platform
 # η αδράνεια στηρίζεται στο 🔍 και στο κόμμα του «Όνομα,». Αλλαγή του κειμένου
 # απαιτεί επανέλεγχο.
 SEARCH_PLACEHOLDER = "🔍 Όνομα, τηλέφωνο ή email"
-
-# Ελληνικά ονόματα ημερών/μηνών, ΑΝΕΞΑΡΤΗΤΑ από το locale του συστήματος. Το strftime με
-# %A/%a/%b διαβάζει το LC_TIME: η set_greek_locale() παρακάτω απλώς ΔΟΚΙΜΑΖΕΙ να το θέσει
-# και, αν το ελληνικό locale δεν είναι εγκατεστημένο, τυπώνει προειδοποίηση και συνεχίζει —
-# οπότε οι ίδιες γραμμές θα εμφάνιζαν «Thursday» μέσα σε ελληνικό UI. Οι τιμές εδώ είναι
-# ίδιες byte-προς-byte με ό,τι παράγει το ελληνικό locale των Windows, ώστε η εμφάνιση να
-# μην αλλάξει καθόλου. Τα ΑΡΙΘΜΗΤΙΚΑ directives (%d %m %Y %H %M) δεν εξαρτώνται από το
-# locale και μένουν ως έχουν.
-# Δείκτης = datetime.weekday(): 0 = Δευτέρα.
-GREEK_DAYS = ("Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή")
-GREEK_DAYS_SHORT = ("Δευ", "Τρι", "Τετ", "Πεμ", "Παρ", "Σαβ", "Κυρ")
-# Δείκτης = αριθμός μήνα - 1.
-GREEK_MONTHS_SHORT = ("Ιαν", "Φεβ", "Μαρ", "Απρ", "Μαϊ", "Ιουν",
-                      "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ")
-
 
 def set_greek_locale():
     """

@@ -19,6 +19,7 @@ PROJECT: Python/Tkinter/SQLite desktop appointment-booking app for a hair salon 
 - `database.py` — schema \+ connection. Tables: `customers`, `appointments` (single `datetime` column, not separate date/time)  
 - `export_excel.py` — XlsxWriter per-day export  
 - `emails_utils.py` — smtplib reminder sender (`EmailSender`)  
+- `greek_text.py` — leaf module, ZERO imports: `GREEK_DAYS`, `GREEK_DAYS_SHORT`, `GREEK_MONTHS_SHORT`. Imported by both `gui.py` and `emails_utils.py`; it exists because `gui.py` imports `emails_utils`, so the reverse import would be a cycle.  
 - `salon_appointments.db` — runtime SQLite data. Don't depend on its contents for logic.
 
 ## DEPS
