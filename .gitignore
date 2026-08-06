@@ -3,8 +3,6 @@ __pycache__/
 *.xlsx
 *.log
 /docs
-/gui
-/giazip
 venv/
 .venv/
 env/
