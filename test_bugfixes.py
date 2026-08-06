@@ -1155,6 +1155,128 @@ if app is not None:
           f"({popup_msgs})")
 
 # ---------------------------------------------------------------------------
+# [13] Ονόματα ημερών/μηνών: ελληνικά ΑΝΕΞΑΡΤΗΤΑ από το locale του συστήματος
+# ---------------------------------------------------------------------------
+print("\n[13] Ελληνικές ημέρες/μήνες χωρίς εξάρτηση από το locale")
+
+import locale as _locale
+
+# ΚΡΙΣΙΜΟ: επιβάλλουμε ΜΗ ελληνικό locale. Χωρίς αυτό, ο έλεγχος θα περνούσε στο μηχάνημα
+# του developer (που έχει ελληνικό locale) ακόμη και με το παλιό strftime("%A") — δηλαδή
+# δεν θα απεδείκνυε τίποτα. Δοκιμάζουμε διαδοχικά ονόματα· το "C" υπάρχει παντού.
+_saved_locale = _locale.setlocale(_locale.LC_TIME)
+_forced = None
+for _cand in ("English_United States.1252", "en_US.UTF-8", "en_US", "C"):
+    try:
+        _locale.setlocale(_locale.LC_TIME, _cand)
+        _forced = _cand
+        break
+    except _locale.Error:
+        continue
+check("[13] setup — επιβλήθηκε μη ελληνικό locale", _forced is not None,
+      "(δεν βρέθηκε κανένα· ο έλεγχος θα ήταν κενός)")
+print(f"     locale δοκιμής: {_forced!r}")
+
+GREEK_LETTERS = set("ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩάέήίόύώϊϋΐΰαβγδεζηθικλμνξοπρστυφχψως")
+
+def is_greek(text):
+    return bool(text) and any(ch in GREEK_LETTERS for ch in text)
+
+try:
+    # Θετικός έλεγχος ότι το locale ΟΝΤΩΣ άλλαξε: αν το strftime εξακολουθεί να βγάζει
+    # ελληνικά, το επιβαλλόμενο locale δεν εφαρμόστηκε και οι έλεγχοι παρακάτω είναι κενοί.
+    _probe = datetime(2026, 8, 6).strftime("%A")
+    check("[13] setup — το strftime ΟΝΤΩΣ βγάζει πλέον μη ελληνικά",
+          not is_greek(_probe), f"(strftime('%A') = {_probe!r})")
+
+    # (α) οι πίνακες είναι πλήρεις και ελληνικοί
+    check("[13] GREEK_DAYS: 7 ελληνικά ονόματα",
+          len(gui.GREEK_DAYS) == 7 and all(is_greek(d) for d in gui.GREEK_DAYS),
+          f"({gui.GREEK_DAYS})")
+    check("[13] GREEK_DAYS_SHORT: 7 ελληνικές συντομεύσεις",
+          len(gui.GREEK_DAYS_SHORT) == 7 and all(is_greek(d) for d in gui.GREEK_DAYS_SHORT),
+          f"({gui.GREEK_DAYS_SHORT})")
+    check("[13] GREEK_MONTHS_SHORT: 12 ελληνικές συντομεύσεις",
+          len(gui.GREEK_MONTHS_SHORT) == 12
+          and all(is_greek(m) for m in gui.GREEK_MONTHS_SHORT),
+          f"({gui.GREEK_MONTHS_SHORT})")
+    # η αντιστοίχιση δείκτη είναι σωστή: 2026-08-06 είναι Πέμπτη
+    check("[13] ο δείκτης weekday() δείχνει τη σωστή ημέρα",
+          gui.GREEK_DAYS[datetime(2026, 8, 6).weekday()] == "Πέμπτη",
+          f"(got={gui.GREEK_DAYS[datetime(2026, 8, 6).weekday()]!r})")
+    check("[13] ο δείκτης μήνα δείχνει τον σωστό μήνα",
+          gui.GREEK_MONTHS_SHORT[8 - 1] == "Αυγ",
+          f"(got={gui.GREEK_MONTHS_SHORT[8 - 1]!r})")
+
+    if app is not None:
+        dash = app.get_frame("DashboardPage")
+
+        # (β) το popup ραντεβού: η γραμμή ημερομηνίας ξεκινά με ελληνική ημέρα
+        def toplevels_of(page):
+            return [w for w in page.winfo_children()
+                    if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+        for w in toplevels_of(dash):
+            try:
+                w.grab_release()
+            except tk.TclError:
+                pass
+            w.destroy()
+        app.update()
+
+        alive = Customer.get_all()[0]
+        appt13 = Appointment(customer_id=alive.id, datetime="2026-08-06 10:00",
+                             services="Κούρεμα", duration=40, notes="", id=999995)
+        dash.show_appointment_popup(appt13, f"{alive.first_name} {alive.last_name}")
+        app.update()
+        opened = toplevels_of(dash)
+        check("[13] setup — το popup άνοιξε", len(opened) == 1, f"({len(opened)})")
+        if opened:
+            date_line = [w.cget("text") for w in opened[0].winfo_children()
+                         if w.winfo_class() == "Label"][0]
+            check("[13] popup: η γραμμή ημερομηνίας είναι ΕΛΛΗΝΙΚΑ υπό ξένο locale",
+                  date_line.startswith("Πέμπτη"), f"(got={date_line!r})")
+            check("[13] popup: δεν εμφανίζεται αγγλικό όνομα ημέρας",
+                  "Thursday" not in date_line, f"(got={date_line!r})")
+            for w in opened:
+                try:
+                    w.grab_release()
+                except tk.TclError:
+                    pass
+                w.destroy()
+            app.update()
+
+        # (γ) οι επικεφαλίδες του ημερολογίου, ξαναχτισμένες υπό το ξένο locale
+        cal = None
+        def walk(w):
+            yield w
+            for c in w.winfo_children():
+                yield from walk(c)
+        for w in walk(dash):
+            if isinstance(w, gui.CalendarView):
+                cal = w
+                break
+        check("[13] setup — βρέθηκε το CalendarView", cal is not None)
+        if cal is not None:
+            cal.build_grid(datetime(2026, 8, 6).date())
+            app.update()
+            month_txt = cal.lbl_month.cget("text")
+            day_txts = [l.cget("text") for l in cal.day_labels]
+            check("[13] ημερολόγιο: ο μήνας είναι ελληνικός υπό ξένο locale",
+                  month_txt == "Αυγ", f"(got={month_txt!r})")
+            check("[13] ημερολόγιο: οι ημέρες είναι ελληνικές υπό ξένο locale",
+                  bool(day_txts) and all(is_greek(t) for t in day_txts),
+                  f"(got={day_txts})")
+            check("[13] ημερολόγιο: καμία αγγλική συντομογραφία ημέρας",
+                  not any(t.split()[0] in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                          for t in day_txts if t.split()),
+                  f"(got={day_txts})")
+            check("[13] ημερολόγιο: το αριθμητικό μέρος της ημέρας διατηρήθηκε",
+                  all(t.split()[-1].isdigit() for t in day_txts if t.split()),
+                  f"(got={day_txts})")
+finally:
+    _locale.setlocale(_locale.LC_TIME, _saved_locale)
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
