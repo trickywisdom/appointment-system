@@ -653,6 +653,92 @@ if app is not None:
     check("slot path: χωρίς customer_id δεν στήνεται branch 2",
           na.current_customer_id is None, f"(got={na.current_customer_id})")
 
+    # --- FIX (a): ο handler της ΠΡΟΗΓΟΥΜΕΝΗΣ αναζήτησης δεν επιβιώνει στο "δε βρέθηκε" ---
+    # Τα "break" bindings κόβουν μόνο ποντίκι/Enter. Τα βελάκια περνούν από τα class
+    # bindings του Listbox και θέτουν επιλογή, οπότε χωρίς unbind το index 0 της γραμμής
+    # "δε βρέθηκε" έλυνε στον ΠΡΩΤΟ πελάτη του προηγούμενου αποτελέσματος (μετρημένο).
+    NOT_FOUND_QUERY = "ζζζζζ"
+    for page_name in ("DashboardPage", "NewAppointPage"):
+        app.show_frame(page_name)
+        app.update()
+        pg = app.get_frame(page_name)
+
+        # 1) επιτυχής αναζήτηση -> το else-branch δένει τον my_upd πάνω σε ΜΗ κενή λίστα
+        pg.search_var.set("Παπαδοπούλου")
+        app.update()
+        check(f"{page_name}: (a) setup — η επιτυχής αναζήτηση έδεσε τον handler",
+              bool(pg.l1.bind("<<ListboxSelect>>")),
+              "(δεν δέθηκε — το σενάριο δεν στήθηκε, οι επόμενοι έλεγχοι είναι κενοί)")
+
+        # καθαρή αφετηρία, ώστε το before/after να μετράει μόνο τη γραμμή "δε βρέθηκε"
+        pg.selected_id = None
+        pg.selected_name = ""
+        before_id, before_name = pg.selected_id, pg.selected_name
+
+        # 2) αναζήτηση που δεν ταιριάζει σε κανέναν
+        pg.search_var.set(NOT_FOUND_QUERY)
+        app.update()
+        check(f"{page_name}: (a) setup — δείχνεται η γραμμή 'δε βρέθηκε'",
+              tuple(pg.l1.get(0, tk.END)) == NOT_FOUND,
+              f"(rows={tuple(pg.l1.get(0, tk.END))})")
+        check(f"{page_name}: (a) το <<ListboxSelect>> ΛΥΘΗΚΕ στη γραμμή 'δε βρέθηκε'",
+              not pg.l1.bind("<<ListboxSelect>>"),
+              f"(binding={pg.l1.bind('<<ListboxSelect>>')!r})")
+
+        frame_before = app.current_frame
+
+        # 3) πραγματική επιλογή πάνω στη γραμμή "δε βρέθηκε" — ό,τι κάνει ένα <Down>
+        pg.l1.selection_set(0)
+        pg.l1.event_generate("<<ListboxSelect>>")
+        app.update()
+
+        check(f"{page_name}: (a) το selected_id ΔΕΝ άλλαξε από τη γραμμή 'δε βρέθηκε'",
+              pg.selected_id == before_id,
+              f"(before={before_id}, after={pg.selected_id})")
+        check(f"{page_name}: (a) το selected_name ΔΕΝ άλλαξε από τη γραμμή 'δε βρέθηκε'",
+              pg.selected_name == before_name,
+              f"(before={before_name!r}, after={pg.selected_name!r})")
+        check(f"{page_name}: (a) το πεδίο αναζήτησης κρατά ό,τι πληκτρολόγησε ο χρήστης",
+              pg.search_var.get() == NOT_FOUND_QUERY, f"(got={pg.search_var.get()!r})")
+        if page_name == "DashboardPage":
+            check("DashboardPage: (a) η γραμμή 'δε βρέθηκε' ΔΕΝ πλοηγεί πουθενά",
+                  app.current_frame is frame_before,
+                  f"(current_frame={type(app.current_frame).__name__})")
+
+    # --- FIX (b): η φόρμα δεν ανοίγει ΠΟΤΕ με μπαγιάτικα date/time ---
+    na = app.get_frame("NewAppointPage")
+    STALE_B = datetime.today().date() + timedelta(days=45)
+    STALE_B_STR = STALE_B.strftime("%d-%m-%Y")
+    na.appoint_date.set_date(STALE_B)
+    na.time_dropdown.set("18:40")
+    app.update()
+    # Χωρίς αυτόν τον έλεγχο, οι δύο επόμενοι θα περνούσαν κενοί αν δεν κόλλαγε το stale.
+    check("(b) setup — το μπαγιάτικο date/time όντως σπάρθηκε",
+          na.appoint_date.get() == STALE_B_STR and na.time_dropdown.get() == "18:40",
+          f"(date={na.appoint_date.get()!r} time={na.time_dropdown.get()!r}, "
+          f"περιμέναμε {STALE_B_STR!r}/'18:40')")
+
+    na.create_new_appointment()  # ΧΩΡΙΣ date, ΧΩΡΙΣ time, ΧΩΡΙΣ πελάτη
+    app.update()
+    check("(b) χωρίς ορίσματα η ημερομηνία πέφτει στο σήμερα",
+          na.appoint_date.get() == TODAY_STR,
+          f"(got={na.appoint_date.get()!r}, σήμερα={TODAY_STR})")
+    check("(b) χωρίς ορίσματα η ώρα καθαρίζεται",
+          na.time_dropdown.get() == "", f"(got={na.time_dropdown.get()!r})")
+    check("(b) χωρίς customer_id δεν στήνεται branch 2",
+          na.current_customer_id is None, f"(got={na.current_customer_id})")
+
+    # REGRESSION GUARD: γίνεται κόκκινο αν κάποιος «απλοποιήσει» τα else σε ανεπιφύλακτα
+    # resets στην κορυφή — θα έτρεχαν ΜΕΤΑ τα ορίσματα και θα σκότωναν το slot booking.
+    na.appoint_date.set_date(STALE_B)
+    na.time_dropdown.set("18:40")
+    app.update()
+    na.create_new_appointment(datetime(2026, 10, 2).date(), "12:20")
+    app.update()
+    check("(b) regression: θετικά ορίσματα date/time ΕΠΙΒΙΩΝΟΥΝ του reset",
+          na.appoint_date.get() == "02-10-2026" and na.time_dropdown.get() == "12:20",
+          f"(date={na.appoint_date.get()!r} time={na.time_dropdown.get()!r})")
+
     app.withdraw()
 
 # ---------------------------------------------------------------------------

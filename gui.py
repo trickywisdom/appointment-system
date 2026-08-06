@@ -690,6 +690,12 @@ class DashboardPage(tk.Frame):
             self.l1.bind("<Button-1>", lambda e: "break")  # Απενεργοποιεί αριστερό κλικ
             self.l1.bind("<Double-Button-1>", lambda e: "break")  # Απενεργοποιεί διπλό κλικ
             self.l1.bind("<Return>", lambda e: "break")  # Αν πατήσει Enter
+            # Το <<ListboxSelect>> ΠΡΕΠΕΙ να λυθεί εδώ. Τα "break" παραπάνω κόβουν μόνο το
+            # ποντίκι· τα βελάκια περνούν από τα class bindings του Listbox και θέτουν
+            # επιλογή. Χωρίς αυτό το unbind, ο handler της ΠΡΟΗΓΟΥΜΕΝΗΣ αναζήτησης επιβιώνει
+            # κλεισμένος πάνω στην ΠΑΛΙΑ filtered_customers, και το index 0 της γραμμής
+            # "δε βρέθηκε" τον οδηγεί στον πρώτο πελάτη του προηγούμενου αποτελέσματος.
+            self.l1.unbind("<<ListboxSelect>>")
         else:
             self.newclient_btn.place_forget()
             # Αν υπάρχουν πελάτες, επαναφέρουμε τα bindings
@@ -699,7 +705,7 @@ class DashboardPage(tk.Frame):
             for customer in filtered_customers:
                 self.l1.insert(tk.END, f" {customer[0]} {customer[1]} — {customer[2]}")
             self.l1.bind("<<ListboxSelect>>", my_upd)
-            
+
         # Διαμόρφωση εμφάνισης λίστας
         for row_index in range(len(filtered_customers)):
             bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
@@ -1377,6 +1383,11 @@ class NewAppointPage(tk.Frame):
             self.l1.bind("<Button-1>", lambda e: "break")  # Απενεργοποιεί αριστερό κλικ
             self.l1.bind("<Double-Button-1>", lambda e: "break")  # Απενεργοποιεί διπλό κλικ
             self.l1.bind("<Return>", lambda e: "break")  # Αν πατήσει Enter
+            # Βλ. το αντίστοιχο σχόλιο στη DashboardPage.search_customer. Εδώ είναι το
+            # ΕΠΙΚΙΝΔΥΝΟ αντίγραφο: ο μπαγιάτικος handler θέτει selected_id + selected_name
+            # + search_var μαζί, που είναι ακριβώς ό,τι ελέγχει το branch 1 της save_appoint,
+            # οπότε το ραντεβού θα περνούσε τον έλεγχο με πελάτη που δεν διάλεξε ο χρήστης.
+            self.l1.unbind("<<ListboxSelect>>")
         else:
             self.newclient_btn.place_forget()
             # Αν υπάρχουν πελάτες, επαναφέρουμε τα bindings
@@ -1598,10 +1609,19 @@ class NewAppointPage(tk.Frame):
     def create_new_appointment(self, date=None, time=None, customer_id=None, customer_name=None):
 
         self.editing = True
+        # Η on_show είναι deferred (after(0)) ΚΑΙ κατασταλμένη από το editing=True, οπότε τα
+        # widgets κρατούν ό,τι άφησε η προηγούμενη επίσκεψη. Ημερομηνία και ώρα γράφονται
+        # ΠΑΝΤΑ, ακριβώς μία φορά: είτε από τα ορίσματα, είτε σε καθαρή προεπιλογή. Οι δύο
+        # else ΔΕΝ γίνονται να βγουν σε ανεπιφύλακτα resets — θα έτρεχαν ΜΕΤΑ τα ορίσματα
+        # και θα έσβηναν το date/time που περνά θετικά το binding του ημερολογίου (~gui.py:291).
         if date is not None:
             self.appoint_date.set_date(date)
+        else:
+            self.appoint_date.set_date(datetime.today().date())
         if time is not None:
             self.time_dropdown.set(time)
+        else:
+            self.time_dropdown.set("")
         self.selected_name = ""
         self.selected_id = None
         self.current_customer_id = None
@@ -1612,11 +1632,6 @@ class NewAppointPage(tk.Frame):
         self.notes.delete("1.0", tk.END)  # Καθαρίζει το πεδίο σημειώσεων
         self.time_dropdown['state'] = 'disabled'
         if customer_id is not None:
-            # Η on_show είναι deferred ΚΑΙ κατασταλμένη από το editing=True, οπότε η ημερομηνία
-            # και η ώρα κρατούν ό,τι άφησε η προηγούμενη επίσκεψη (επιβεβαιωμένο: επιβιώνουν).
-            # Ανοίγουμε τη φόρμα σε ορισμένη κατάσταση.
-            self.appoint_date.set_date(datetime.today().date())
-            self.time_dropdown.set("")
             # Προ-συμπλήρωση πελάτη: στήνουμε το branch 2 του guard της save_appoint
             # (current_customer_id + loaded_customer_name). Το selected_id/selected_name
             # καθαρίζονται ρητά, όπως στην edit_appoint, ώστε μπαγιάτικη επιλογή από
