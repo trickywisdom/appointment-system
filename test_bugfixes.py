@@ -1324,6 +1324,236 @@ finally:
     _locale.setlocale(_locale.LC_TIME, _saved_locale)
 
 # ---------------------------------------------------------------------------
+# [14] CHARACTERIZATION: ο πίνακας ραντεβού της ShowClientPage.
+# Κωδικοποιεί τη ΣΗΜΕΡΙΝΗ συμπεριφορά, ΜΑΖΙ με τα ελαττώματά της (χαμένο id, γέμισμα
+# 10 γραμμών, φιλτράρισμα padding μέσω αποτυχίας strptime). Το commit 2 θα αλλάξει
+# σκόπιμα μέρος από αυτά· εδώ απλώς καρφώνεται η αφετηρία.
+# ---------------------------------------------------------------------------
+print("\n[14] Characterization: πίνακας ραντεβού της ShowClientPage")
+
+if app is not None:
+    sp14 = app.get_frame("ShowClientPage")
+
+    # --- δικά της fixtures: δικός της αριθμοδοτικός χώρος (6950000xx), δικές της ημέρες ---
+    # Όλα τα ραντεβού στις 17:00 με διάρκεια 20', και ΞΕΧΩΡΙΣΤΗ ημέρα το καθένα, ώστε ούτε
+    # μεταξύ τους να συγκρούονται ούτε με τα 10:00-11:20 της [1] αν πέσει ίδια ημερομηνία.
+    TODAY_14 = datetime.today().date()
+    APPT_TIME = "17:00"
+    NOTE_MARK = "ΣΗΜΕΙΩΣΗ-ΜΟΝΑΔΙΚΗ-Ξ7Ψ"   # μοναδικό, για να έχει νόημα ο έλεγχος απουσίας
+
+    def seed_appts(cust_id, offsets, service="Κούρεμα", notes=NOTE_MARK):
+        made = []
+        for off in offsets:
+            d = TODAY_14 + timedelta(days=off)
+            a = Appointment(cust_id, f"{d.isoformat()} {APPT_TIME}", service, 20, notes)
+            a.save_to_db()
+            made.append((off, d, a))
+        return made
+
+    cust_A = Customer("Καρτέλα", "Τριών", "6950000001", "kartela-a@paradeigma.gr")
+    cust_A.save_to_db()
+    cust_B = Customer("Μόνο", "Παρελθόν", "6950000002", "kartela-b@paradeigma.gr")
+    cust_B.save_to_db()
+    cust_C = Customer("Δώδεκα", "Ραντεβού", "6950000003", "kartela-c@paradeigma.gr")
+    cust_C.save_to_db()
+    check("[14] setup — δημιουργήθηκαν οι τρεις πελάτες-fixtures",
+          all(c.id is not None for c in (cust_A, cust_B, cust_C)))
+
+    # A: ένα παρελθοντικό, ένα ΣΗΜΕΡΑ, ένα μελλοντικό -> ασκεί το future branch
+    seeded_A = seed_appts(cust_A.id, [-40, 0, 40])
+    # B: ΜΟΝΟ παρελθοντικά -> ασκεί το past branch
+    seeded_B = seed_appts(cust_B.id, [-70, -35])
+    # C: 12 ραντεβού (6 παρελθόν, 6 μέλλον) -> n > 10, δηλαδή ΧΩΡΙΣ γέμισμα
+    seeded_C = seed_appts(cust_C.id, [-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6])
+    check("[14] setup — αποθηκεύτηκαν 3 + 2 + 12 ραντεβού",
+          all(a.id is not None for _o, _d, a in seeded_A + seeded_B + seeded_C)
+          and (len(seeded_A), len(seeded_B), len(seeded_C)) == (3, 2, 12))
+
+    def grid_cells(page):
+        """(γραμμή, στήλη) -> κείμενο, διαβασμένο από τα ΠΡΑΓΜΑΤΙΚΑ widgets του grid."""
+        cells = {}
+        for w in page.scrollable_frame.winfo_children():
+            info = w.grid_info()
+            cells[(int(info["row"]), int(info["column"]))] = w.cget("text")
+        return cells
+
+    def grid_row_count(page):
+        rows = {int(w.grid_info()["row"]) for w in page.scrollable_frame.winfo_children()}
+        return (max(rows) + 1) if rows else 0
+
+    # =========================================================================
+    # (1) το σχήμα που επιστρέφει η get_appoints_from_id
+    # =========================================================================
+    rows_A = sp14.get_appoints_from_id(cust_A.id)
+    check("[14.1] επιστρέφεται list", isinstance(rows_A, list), f"({type(rows_A).__name__})")
+    check("[14.1] μία εγγραφή ανά ραντεβού", len(rows_A) == 3, f"(got={len(rows_A)})")
+    check("[14.1] κάθε εγγραφή είναι tuple 3 στοιχείων",
+          all(isinstance(r, tuple) and len(r) == 3 for r in rows_A), f"({rows_A})")
+    check("[14.1] όλα τα στοιχεία είναι strings",
+          all(isinstance(v, str) for r in rows_A for v in r), f"({rows_A})")
+
+    # σειρά datetime ASC, και ακριβές περιεχόμενο ανά στήλη
+    expected_A = [(d.strftime("%d-%m-%Y"), APPT_TIME, "Κούρεμα")
+                  for _off, d, _a in sorted(seeded_A, key=lambda t: t[1])]
+    check("[14.1] σειρά datetime ASC και ακριβές περιεχόμενο (%d-%m-%Y, %H:%M, services)",
+          rows_A == expected_A, f"(got={rows_A}, exp={expected_A})")
+    check("[14.1] η στήλη 0 είναι %d-%m-%Y (10 χαρακτήρες, δύο παύλες)",
+          all(len(r[0]) == 10 and r[0].count("-") == 2 for r in rows_A), f"({rows_A})")
+    check("[14.1] η στήλη 1 είναι %H:%M",
+          all(len(r[1]) == 5 and r[1][2] == ":" for r in rows_A), f"({rows_A})")
+    check("[14.1] η στήλη 2 είναι το services ΑΥΤΟΥΣΙΟ",
+          all(r[2] == "Κούρεμα" for r in rows_A), f"({rows_A})")
+
+    # =========================================================================
+    # (2) ΤΙ ΧΑΝΕΤΑΙ: id, duration, notes, customer_id. Το commit 2 το αλλάζει.
+    #     Κάθε αρνητικός έλεγχος έχει θετικό control στο ΙΔΙΟ fixture.
+    # =========================================================================
+    probe_off, probe_date, probe_appt = seeded_A[0]
+    probe_row = rows_A[0]
+    # POSITIVE CONTROL: η γραμμή αυτή ΟΝΤΩΣ αντιστοιχεί σε αυτό το ραντεβού
+    check("[14.2] positive control: η γραμμή αντιστοιχεί στο ραντεβού που σπάρθηκε",
+          probe_row == (probe_date.strftime("%d-%m-%Y"), APPT_TIME, "Κούρεμα"),
+          f"(row={probe_row})")
+    check("[14.2] positive control: το ραντεβού ΕΧΕΙ id/duration/notes στη βάση",
+          probe_appt.id is not None and probe_appt.duration == 20
+          and probe_appt.notes == NOTE_MARK,
+          f"(id={probe_appt.id}, dur={probe_appt.duration}, notes={probe_appt.notes!r})")
+
+    flat_A = [v for r in rows_A for v in r]
+    check("[14.2] το id ΔΕΝ υπάρχει πουθενά στο επιστρεφόμενο σχήμα",
+          str(probe_appt.id) not in flat_A, f"(id={probe_appt.id}, flat={flat_A})")
+    check("[14.2] το duration ΔΕΝ υπάρχει πουθενά",
+          str(probe_appt.duration) not in flat_A, f"(dur={probe_appt.duration})")
+    check("[14.2] τα notes ΔΕΝ υπάρχουν πουθενά",
+          not any(NOTE_MARK in v for v in flat_A), f"(flat={flat_A})")
+    check("[14.2] το customer_id ΔΕΝ υπάρχει πουθενά",
+          str(cust_A.id) not in flat_A, f"(cid={cust_A.id}, flat={flat_A})")
+    check("[14.2] συνέπεια: από τη γραμμή ΔΕΝ ανακτάται ταυτότητα ραντεβού "
+          "(3 στήλες, καμία δεν είναι κλειδί)",
+          len(probe_row) == 3, f"(row={probe_row})")
+
+    # =========================================================================
+    # (3)+(4)+(5) render με n < 10: γέμισμα, αντιστοίχιση γραμμών, items
+    # =========================================================================
+    sp14.customer_info(cust_A.id)
+    app.update()
+    n_A = len(seeded_A)
+
+    check("[14.3] με n<10 ζωγραφίζονται ΑΚΡΙΒΩΣ 10 γραμμές",
+          grid_row_count(sp14) == 10, f"(got={grid_row_count(sp14)})")
+    check("[14.3] η appoints_list ΜΕΤΑΛΛΑΧΘΗΚΕ σε μήκος 10",
+          len(sp14.appoints_list) == 10, f"(got={len(sp14.appoints_list)})")
+    check("[14.3] οι γραμμές-γέμισμα είναι ['', '', '']",
+          all(sp14.appoints_list[i] == ["", "", ""] for i in range(n_A, 10)),
+          f"(got={sp14.appoints_list[n_A:]})")
+    check("[14.3] το γέμισμα είναι list, ενώ οι πραγματικές γραμμές είναι tuple",
+          isinstance(sp14.appoints_list[9], list)
+          and isinstance(sp14.appoints_list[0], tuple),
+          f"(pad={type(sp14.appoints_list[9]).__name__}, "
+          f"real={type(sp14.appoints_list[0]).__name__})")
+
+    cells_A = grid_cells(sp14)
+    # (4) ΚΑΘΕ πραγματική γραμμή, όχι μόνο η πρώτη
+    for i in range(n_A):
+        check(f"[14.4] γραμμή {i} του grid == appoints_list[{i}]",
+              tuple(cells_A[(i, c)] for c in range(3)) == tuple(sp14.appoints_list[i]),
+              f"(grid={tuple(cells_A[(i, c)] for c in range(3))}, "
+              f"list={tuple(sp14.appoints_list[i])})")
+    for i in range(n_A, 10):
+        check(f"[14.4] γραμμή {i} του grid είναι κενή (γέμισμα)",
+              all(cells_A[(i, c)] == "" for c in range(3)),
+              f"(got={tuple(cells_A[(i, c)] for c in range(3))})")
+
+    # (5) items: μόνο πραγματικές γραμμές
+    check("[14.5] το items έχει μία εγγραφή ανά ΠΡΑΓΜΑΤΙΚΟ ραντεβού",
+          len(sp14.items) == n_A, f"(got={len(sp14.items)})")
+    expected_items_A = [(d, idx) for idx, (_o, d, _a)
+                        in enumerate(sorted(seeded_A, key=lambda t: t[1]))]
+    check("[14.5] το items είναι (date, row_index) στη σειρά του grid",
+          sp14.items == expected_items_A, f"(got={sp14.items}, exp={expected_items_A})")
+    check("[14.5] καμία γραμμή-γέμισμα δεν μπήκε στο items",
+          all(idx < n_A for _d, idx in sp14.items), f"(got={sp14.items})")
+
+    # =========================================================================
+    # (6) find_best_matching_item: future branch (A) και past branch (B)
+    # =========================================================================
+    check("[14.6] FUTURE branch: στόχος = το πλησιέστερο ΜΗ παρελθοντικό (το σημερινό)",
+          sp14.target_index == 1, f"(got={sp14.target_index})")
+    check("[14.6] positive control: η γραμμή-στόχος είναι όντως η σημερινή",
+          sp14.appoints_list[sp14.target_index][0] == TODAY_14.strftime("%d-%m-%Y"),
+          f"(row={sp14.appoints_list[sp14.target_index]})")
+
+    # =========================================================================
+    # (7) highlight_target_row: ΑΚΡΙΒΩΣ η γραμμή target_index
+    # =========================================================================
+    HL_BG, HL_FG = "#0560b6", "white"
+    by_row = {}
+    for w in sp14.scrollable_frame.winfo_children():
+        by_row.setdefault(int(w.grid_info()["row"]), []).append(w)
+    tgt = sp14.target_index
+    check("[14.7] και οι 3 στήλες της γραμμής-στόχου έχουν χρώμα highlight",
+          len(by_row[tgt]) == 3
+          and all(str(w.cget("bg")) == HL_BG and str(w.cget("fg")) == HL_FG
+                  for w in by_row[tgt]),
+          f"(bg={[str(w.cget('bg')) for w in by_row[tgt]]})")
+    check("[14.7] ΚΑΜΙΑ άλλη γραμμή δεν έχει το χρώμα highlight",
+          all(str(w.cget("bg")) != HL_BG
+              for r, ws in by_row.items() if r != tgt for w in ws),
+          f"(highlighted rows={[r for r, ws in by_row.items() if any(str(w.cget('bg')) == HL_BG for w in ws)]})")
+
+    # --- past branch, σε δικό του fixture ---
+    sp14.customer_info(cust_B.id)
+    app.update()
+    check("[14.6] PAST branch: στόχος = το πλησιέστερο ΠΑΡΕΛΘΟΝΤΙΚΟ (το πιο πρόσφατο)",
+          sp14.target_index == 1, f"(got={sp14.target_index})")
+    check("[14.6] positive control: η γραμμή-στόχος είναι το πιο πρόσφατο παρελθοντικό",
+          sp14.appoints_list[sp14.target_index][0]
+          == (TODAY_14 + timedelta(days=-35)).strftime("%d-%m-%Y"),
+          f"(row={sp14.appoints_list[sp14.target_index]})")
+
+    # =========================================================================
+    # (8) ΚΑΤΑΓΡΑΦΗ (όχι έγκριση) του yview_moveto για n=3 και n=12
+    # =========================================================================
+    moves = []
+    _real_moveto = sp14.canvas.yview_moveto
+    sp14.canvas.yview_moveto = lambda f: moves.append(f)
+    try:
+        sp14.customer_info(cust_A.id)   # n = 3 -> γεμίζει στις 10
+        app.update()
+        moves.clear()
+        sp14.scroll_to_target()
+        moved_n3 = moves[-1] if moves else None
+        tgt_n3 = sp14.target_index
+
+        sp14.customer_info(cust_C.id)   # n = 12 -> ΧΩΡΙΣ γέμισμα
+        app.update()
+        n_C = len(sp14.appoints_list)
+        tgt_n12 = sp14.target_index
+        moves.clear()
+        sp14.scroll_to_target()
+        moved_n12 = moves[-1] if moves else None
+    finally:
+        sp14.canvas.yview_moveto = _real_moveto
+
+    print(f"     ΚΑΤΑΓΡΑΦΗ n=3 : rows={10} target_index={tgt_n3} yview_moveto={moved_n3!r}")
+    print(f"     ΚΑΤΑΓΡΑΦΗ n=12: rows={n_C} target_index={tgt_n12} yview_moveto={moved_n12!r}")
+    # Καρφώνονται ΩΣ ΕΧΟΥΝ, χωρίς κρίση για το αν είναι σωστά — ώστε το commit 2 να
+    # μπορεί να αποδείξει ότι δεν άλλαξαν.
+    check("[14.8] n=3: το appoints_list γέμισε στις 10 γραμμές",
+          len(sp14.get_appoints_from_id(cust_A.id)) == 3, "(fixture άλλαξε;)")
+    check("[14.8] n=3: yview_moveto(0.0) [καταγραφή, όχι έγκριση]",
+          moved_n3 == 0.0, f"(got={moved_n3!r})")
+    check("[14.8] n=12: ΚΑΜΙΑ γραμμή-γέμισμα (n > 10)",
+          n_C == 12 and all(r != ["", "", ""] for r in sp14.appoints_list),
+          f"(rows={n_C})")
+    check("[14.8] n=12: target_index=6 (πρώτο μελλοντικό) [καταγραφή]",
+          tgt_n12 == 6, f"(got={tgt_n12})")
+    check("[14.8] n=12: yview_moveto(2/12) [καταγραφή, όχι έγκριση]",
+          moved_n12 == 2 / 12, f"(got={moved_n12!r})")
+    check("[14.8] n=12: ζωγραφίστηκαν 12 γραμμές, όχι 10",
+          grid_row_count(sp14) == 12, f"(got={grid_row_count(sp14)})")
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
