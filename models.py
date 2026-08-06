@@ -126,9 +126,27 @@ class Customer:
                         VALUES (?, ?, ?, ?, ?)
                     ''', (self.id, self.first_name, self.last_name, self.phone, self.email))
                     self.id = c.lastrowid
+        except sqlite3.IntegrityError as e:
+            # ΠΡΟΣΟΧΗ ΣΤΗ ΣΕΙΡΑ: το IntegrityError είναι υποκλάση του sqlite3.Error, οπότε
+            # ΠΡΕΠΕΙ να πιάνεται ΠΡΙΝ από το γενικό except παρακάτω. Αν μπει από κάτω, το
+            # γενικό το αρπάζει πρώτο και το ωμό αγγλικό κείμενο του sqlite
+            # («UNIQUE constraint failed: customers.email») φτάνει στον χρήστη.
+            reason = str(e)
+            if "customers.phone" in reason:
+                raise CustomerValidationError(
+                    f"Υπάρχει ήδη πελάτης με αυτό το τηλέφωνο: «{self.phone}»."
+                ) from e
+            if "customers.email" in reason:
+                raise CustomerValidationError(
+                    f"Υπάρχει ήδη πελάτης με αυτό το email: «{self.email}»."
+                ) from e
+            # Άγνωστη σύγκρουση: γενικό ελληνικό μήνυμα αντί για διαρροή του ωμού κειμένου.
+            raise CustomerValidationError(
+                "Υπάρχει ήδη πελάτης με αυτά τα στοιχεία."
+            ) from e
         except sqlite3.Error as e:
             raise e
-        
+
     @staticmethod
     def delete_from_db(phone):
         #Συνδεση στο databse

@@ -855,6 +855,75 @@ if rt_cust is not None and rt_cust.id is not None:
     check("ο πελάτης βρίσκεται με αναζήτηση σκέτων ψηφίων '6910000002'",
           any(c.id == rt_cust.id for c in Customer.search("6910000002")))
 
+# --- (ς) Διπλό τηλέφωνο/email: ελληνικό μήνυμα, ΟΧΙ το ωμό κείμενο του sqlite ---
+# Το UNIQUE constraint χτυπούσε ως sqlite3.IntegrityError και έφτανε στον χρήστη ως
+# «Αποτυχία στην αποθήκευση του πελάτη: UNIQUE constraint failed: customers.email».
+RAW_SQLITE_LEAK = "UNIQUE constraint failed"
+
+dup_base = Customer("Πρώτος", "Κάτοχος", "6940000001", "katoxos@paradeigma.gr")
+dup_base.save_to_db()
+check("(ς) setup — δημιουργήθηκε ο πελάτης που κατέχει τηλέφωνο και email",
+      dup_base.id is not None)
+
+# ΔΕΝ χρησιμοποιούμε την try_save_customer εδώ: ο βοηθός της ελέγχει «καμία γραμμή με
+# αυτό το τηλέφωνο», που είναι λάθος invariant για διπλότυπο — η γραμμή ΟΦΕΙΛΕΙ να υπάρχει,
+# ανήκει στον άλλο πελάτη. Το σωστό invariant είναι ότι δεν προστέθηκε ΝΕΑ γραμμή.
+def duplicate_attempt(phone, email, label):
+    before = len(Customer.get_all())
+    try:
+        Customer("Διπλό", "Τυπο", phone, email).save_to_db()
+        check(label, False, "(αποθηκεύτηκε ενώ έπρεπε να απορριφθεί!)")
+        return None
+    except Exception as e:
+        # ΣΚΟΠΙΜΑ ευρύ except: αν ξαναδιαρρεύσει το sqlite3.IntegrityError, θέλουμε ΚΟΚΚΙΝΟ
+        # έλεγχο εδώ, όχι κατάρρευση της σουίτας που ακυρώνει σιωπηλά ό,τι ακολουθεί.
+        check(f"{label} -> ως CustomerValidationError, όχι ωμό sqlite",
+              isinstance(e, CustomerValidationError),
+              f"(διέρρευσε {type(e).__name__}: {e})")
+        check(label, True)
+        check(f"{label} -> δεν προστέθηκε νέα γραμμή",
+              len(Customer.get_all()) == before,
+              f"(πριν={before}, μετά={len(Customer.get_all())})")
+        return str(e)
+
+# ίδιο ΤΗΛΕΦΩΝΟ, διαφορετικό email
+dup_phone_msg = duplicate_attempt("6940000001", "allo-email@paradeigma.gr",
+                                  "(ς) διπλό τηλέφωνο απορρίπτεται")
+check("(ς) το μήνυμα διπλού τηλεφώνου είναι ελληνικό και δείχνει τον αριθμό",
+      dup_phone_msg is not None and "ήδη" in dup_phone_msg
+      and "τηλέφωνο" in dup_phone_msg and "6940000001" in dup_phone_msg,
+      f"(μήνυμα={dup_phone_msg!r})")
+check("(ς) το μήνυμα διπλού τηλεφώνου ΔΕΝ διαρρέει το ωμό κείμενο του sqlite",
+      dup_phone_msg is not None and RAW_SQLITE_LEAK not in dup_phone_msg,
+      f"(μήνυμα={dup_phone_msg!r})")
+
+# ίδιο EMAIL, διαφορετικό τηλέφωνο
+dup_email_msg = duplicate_attempt("6940000002", "katoxos@paradeigma.gr",
+                                  "(ς) διπλό email απορρίπτεται")
+check("(ς) το μήνυμα διπλού email είναι ελληνικό και δείχνει τη διεύθυνση",
+      dup_email_msg is not None and "ήδη" in dup_email_msg
+      and "email" in dup_email_msg and "katoxos@paradeigma.gr" in dup_email_msg,
+      f"(μήνυμα={dup_email_msg!r})")
+check("(ς) το μήνυμα διπλού email ΔΕΝ διαρρέει το ωμό κείμενο του sqlite",
+      dup_email_msg is not None and RAW_SQLITE_LEAK not in dup_email_msg,
+      f"(μήνυμα={dup_email_msg!r})")
+
+# Το UPDATE path χτυπά το ίδιο UNIQUE: μετακινούμε το τηλέφωνο του ενός πάνω στου άλλου.
+other = Customer("Δεύτερος", "Κάτοχος", "6940000003", "deuteros@paradeigma.gr")
+other.save_to_db()
+clash = Customer("Δεύτερος", "Κάτοχος", "6940000001", "deuteros@paradeigma.gr", other.id)
+try:
+    clash.save_to_db(other.id)
+    check("(ς) το UPDATE σε κατειλημμένο τηλέφωνο απορρίπτεται", False,
+          "(πέρασε χωρίς σφάλμα!)")
+except Exception as e:  # ευρύ σκόπιμα, όπως στη duplicate_attempt
+    check("(ς) το UPDATE σε κατειλημμένο τηλέφωνο απορρίπτεται", True)
+    check("(ς) το UPDATE δίνει CustomerValidationError, όχι ωμό sqlite",
+          isinstance(e, CustomerValidationError),
+          f"(διέρρευσε {type(e).__name__}: {e})")
+    check("(ς) και εκεί το μήνυμα είναι ελληνικό, χωρίς ωμό sqlite",
+          "ήδη" in str(e) and RAW_SQLITE_LEAK not in str(e), f"(μήνυμα={str(e)!r})")
+
 # --- (ζ) Το UPDATE path περνά από τον ίδιο έλεγχο, όχι μόνο το INSERT ---
 if ok_cust is not None and ok_cust.id is not None:
     stale = Customer("Έλεγχος", "Μορφής", "6910000001", "valid-01@paradeigma.gr", ok_cust.id)
