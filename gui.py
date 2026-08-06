@@ -406,9 +406,14 @@ class DashboardPage(tk.Frame):
         super().__init__(parent)
         self.controller = controller
         self.open_for_first_time = True
+        # Ίδιες αρχικές τιμές με τη NewAppointPage: τα δύο αυτά τα έγραφε ΜΟΝΟ ο my_upd της
+        # search_customer, οπότε σε φρέσκια σελίδα (πριν την πρώτη επιλογή πελάτη) η
+        # ανάγνωσή τους έσκαγε με AttributeError.
+        self.selected_name = ""
+        self.selected_id = None
         # Φόρτωση εικόνας
         try:
-            current_dir = os.path.dirname(__file__) 
+            current_dir = os.path.dirname(__file__)
             image_path = os.path.join(current_dir, "images", "closebtn_square.png")
             self.closebtn_square = PhotoImage(file=image_path)
         except:
