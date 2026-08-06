@@ -1,4 +1,5 @@
 import os
+import sqlite3  # μόνο για να ξεχωρίζουμε το sqlite3.Error από «δεν βρέθηκε» στα lookups
 import tkinter as tk
 from tkinter import messagebox, ttk, PhotoImage
 import database
@@ -794,16 +795,24 @@ class DashboardPage(tk.Frame):
         date_obj = datetime.strptime(dt, "%Y-%m-%d")
         day = date_obj.strftime("%A")
         date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
-        customer = Customer.get_customer_by_id(appointment.customer_id)
-        if customer is None:
+        def abort_popup(message):
             # Το grab_set() έχει ΗΔΗ γίνει παραπάνω. Αν φύγουμε από εδώ χωρίς να γκρεμίσουμε
             # το popup, μένει στην οθόνη ένα modal παράθυρο χωρίς περιεχόμενο και χωρίς
             # κουμπιά — και χωρίς WM_DELETE_WINDOW handler, γιατί αυτός μπαίνει στο τέλος
             # της μεθόδου. Ελευθερώνουμε ρητά το grab και γκρεμίζουμε ΠΡΙΝ το μήνυμα.
             popup.grab_release()
             popup.destroy()
-            messagebox.showerror("Σφάλμα",
-                                 "Δεν βρέθηκαν τα στοιχεία του πελάτη για αυτό το ραντεβού.")
+            messagebox.showerror("Σφάλμα", message)
+
+        try:
+            customer = Customer.get_customer_by_id(appointment.customer_id)
+        except sqlite3.Error:
+            # Βλάβη βάσης — ΔΙΑΦΟΡΕΤΙΚΟ μήνυμα από το «δεν βρέθηκε». Δεν δείχνουμε το
+            # κείμενο του sqlite: είναι αγγλικό (βλ. 78771bc).
+            abort_popup("Πρόβλημα κατά την ανάγνωση από τη βάση δεδομένων. Δοκιμάστε ξανά.")
+            return
+        if customer is None:
+            abort_popup("Δεν βρέθηκαν τα στοιχεία του πελάτη για αυτό το ραντεβού.")
             return
         tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
         tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
@@ -1953,7 +1962,14 @@ class ShowClientPage(tk.Frame):
         self.highlight_target_row()
 
     def customer_info(self, customer_id):
-        customer = Customer.get_customer_by_id(customer_id)
+        try:
+            customer = Customer.get_customer_by_id(customer_id)
+        except sqlite3.Error:
+            # Βλάβη βάσης: ΔΕΝ είναι το ίδιο με «δεν υπάρχει ο πελάτης», και δεν πρέπει να
+            # το λέμε σαν να είναι. Χωρίς κείμενο του sqlite — είναι αγγλικό (βλ. 78771bc).
+            messagebox.showerror("Σφάλμα",
+                                 "Πρόβλημα κατά την ανάγνωση από τη βάση δεδομένων. Δοκιμάστε ξανά.")
+            return
         if not customer:
             messagebox.showerror("Σφάλμα", "Δεν βρέθηκε ο πελάτης")
             return

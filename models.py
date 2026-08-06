@@ -198,21 +198,19 @@ class Customer:
         
     @classmethod
     def get_customer_by_id(self, customer_id):
-#Εύερση όλων των στοιχείων του πελάτη μέσω του id του
-        try:
-            with sqlite3.connect('salon_appointments.db') as conn:
-                c = conn.cursor()
-                c.execute("SELECT first_name, last_name, phone, email, id FROM customers WHERE id = ?", (customer_id,))
-                result = c.fetchone()
-                if result:
-                        customer = Customer(first_name=result[0], last_name=result[1], phone=result[2], email=result[3], id=result[4])
-                        return customer
-                else:
-                    customer = None
-                    return customer
-        except Exception as e:
-            print(f"Error retrieving customer by ID: {e}")
+        """Επιστρέφει τον πελάτη με αυτό το id, ή None ΜΟΝΟ όταν δεν υπάρχει τέτοια γραμμή.
+        Τα σφάλματα βάσης ΔΕΝ καταπίνονται — ανεβαίνουν ως sqlite3.Error, ώστε ο καλών να
+        ξεχωρίζει το «δεν υπάρχει τέτοιος πελάτης» από το «η βάση δεν απαντά» και να δείξει
+        διαφορετικό μήνυμα. Παλιότερα ένα try/except επέστρεφε None και στις δύο περιπτώσεις,
+        οπότε μια πραγματική βλάβη εμφανιζόταν ως «Δεν βρέθηκε ο πελάτης»."""
+        with sqlite3.connect('salon_appointments.db') as conn:
+            c = conn.cursor()
+            c.execute("SELECT first_name, last_name, phone, email, id FROM customers WHERE id = ?", (customer_id,))
+            result = c.fetchone()
+        if result is None:
             return None
+        return Customer(first_name=result[0], last_name=result[1], phone=result[2],
+                        email=result[3], id=result[4])
 
     @staticmethod
     def matches(customer, term):

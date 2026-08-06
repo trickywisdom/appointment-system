@@ -1053,6 +1053,108 @@ if app is not None:
     app.update()
 
 # ---------------------------------------------------------------------------
+# [12] get_customer_by_id: «δεν υπάρχει» != «η βάση δεν απαντά»
+# ---------------------------------------------------------------------------
+print("\n[12] Απουσία πελάτη vs βλάβη βάσης (models.Customer.get_customer_by_id)")
+
+# Η βλάβη παράγεται ΑΛΗΘΙΝΑ: πειράζουμε κάτι από το οποίο ΕΞΑΡΤΑΤΑΙ η μέθοδος (τον
+# πίνακα customers), ΟΧΙ την ίδια τη μέθοδο. Ένα patch της μεθόδου θα απεδείκνυε μόνο
+# ότι το mock δουλεύει.
+class _BrokenDB:
+    """Μετονομάζει προσωρινά τον πίνακα customers, ώστε κάθε SELECT να σκάει αληθινά."""
+    def __enter__(self):
+        with sqlite3.connect('salon_appointments.db') as conn:
+            conn.execute("ALTER TABLE customers RENAME TO customers_hidden")
+        return self
+    def __exit__(self, *exc):
+        with sqlite3.connect('salon_appointments.db') as conn:
+            conn.execute("ALTER TABLE customers_hidden RENAME TO customers")
+        return False
+
+alive = Customer.get_all()[0]
+
+# (α) απουσία -> None, ΧΩΡΙΣ εξαίρεση
+missing = Customer.get_customer_by_id(10**9)
+check("[12] ανύπαρκτο id επιστρέφει None", missing is None, f"(got={missing!r})")
+present = Customer.get_customer_by_id(alive.id)
+check("[12] υπαρκτό id επιστρέφει τον πελάτη",
+      present is not None and present.id == alive.id, f"(got={present!r})")
+
+# (β) βλάβη -> sqlite3.Error, ΟΧΙ None
+with _BrokenDB():
+    try:
+        broken_result = Customer.get_customer_by_id(alive.id)
+        check("[12] βλάβη βάσης ανεβάζει sqlite3.Error αντί να επιστρέφει None",
+              False, f"(επέστρεψε {broken_result!r} — η βλάβη καταπιέστηκε)")
+    except sqlite3.Error:
+        check("[12] βλάβη βάσης ανεβάζει sqlite3.Error αντί να επιστρέφει None", True)
+    except Exception as e:
+        check("[12] βλάβη βάσης ανεβάζει sqlite3.Error αντί να επιστρέφει None",
+              False, f"(ανέβηκε {type(e).__name__}: {e})")
+
+# ο πίνακας επανήλθε
+check("[12] ο πίνακας customers επανήλθε μετά τη δοκιμή",
+      Customer.get_customer_by_id(alive.id) is not None)
+
+if app is not None:
+    sp = app.get_frame("ShowClientPage")
+    dash = app.get_frame("DashboardPage")
+
+    def messages_from(action):
+        shown_messages.clear()
+        try:
+            action()
+        except Exception as e:
+            return [("ΑΝΕΞΕΛΕΓΚΤΗ", f"{type(e).__name__}: {e}")]
+        app.update()
+        return list(shown_messages)
+
+    # --- ShowClientPage.customer_info: τα δύο μηνύματα πρέπει να ΔΙΑΦΕΡΟΥΝ ---
+    absent_msgs = messages_from(lambda: sp.customer_info(10**9))
+    with _BrokenDB():
+        broken_msgs = messages_from(lambda: sp.customer_info(alive.id))
+
+    absent_txt = " | ".join(m for _t, m in absent_msgs)
+    broken_txt = " | ".join(m for _t, m in broken_msgs)
+    check("[12] customer_info: η απουσία δίνει «Δεν βρέθηκε ο πελάτης»",
+          "Δεν βρέθηκε ο πελάτης" in absent_txt, f"({absent_msgs})")
+    check("[12] customer_info: η βλάβη δίνει μήνυμα ΒΑΣΗΣ, όχι «δεν βρέθηκε»",
+          "βάση" in broken_txt and "Δεν βρέθηκε ο πελάτης" not in broken_txt,
+          f"({broken_msgs})")
+    check("[12] customer_info: τα δύο μηνύματα ΔΙΑΦΕΡΟΥΝ",
+          absent_txt != broken_txt and broken_txt != "",
+          f"(absent={absent_txt!r}, broken={broken_txt!r})")
+    check("[12] customer_info: η βλάβη δεν διαρρέει αγγλικό κείμενο sqlite",
+          "no such table" not in broken_txt.lower(), f"({broken_txt!r})")
+
+    # --- show_appointment_popup: η βλάβη περνά ΚΑΙ ΑΥΤΗ από το teardown ---
+    def toplevels_of(page):
+        return [w for w in page.winfo_children()
+                if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+    for w in toplevels_of(dash):
+        try:
+            w.grab_release()
+        except tk.TclError:
+            pass
+        w.destroy()
+    app.update()
+
+    err_appt = Appointment(customer_id=alive.id, datetime=f"{FRIDAY} 10:00",
+                           services="Κούρεμα", duration=40, notes="", id=999997)
+    with _BrokenDB():
+        popup_msgs = messages_from(
+            lambda: dash.show_appointment_popup(err_appt, "Κάποιος Πελάτης"))
+    popup_txt = " | ".join(m for _t, m in popup_msgs)
+
+    check("[12] popup: η βλάβη δεν αφήνει ορφανό Toplevel",
+          len(toplevels_of(dash)) == 0, f"(έμειναν {len(toplevels_of(dash))})")
+    check("[12] popup: η βλάβη δεν κρατά grab",
+          app.grab_current() is None, f"(grab_current={app.grab_current()!r})")
+    check("[12] popup: η βλάβη δίνει μήνυμα ΒΑΣΗΣ, όχι «δεν βρέθηκαν τα στοιχεία»",
+          "βάση" in popup_txt and "Δεν βρέθηκαν τα στοιχεία" not in popup_txt,
+          f"({popup_msgs})")
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
