@@ -782,19 +782,29 @@ class DashboardPage(tk.Frame):
 
         self.after(300, lambda: force_focus(self, self.current_popup))
   
-    def show_appointment_popup(self, appointment, customer_name): # ανενεργό προς το παρόν
+    def show_appointment_popup(self, appointment, customer_name):
         """Εμφάνιση popup με λεπτομέρειες ραντεβού"""
         popup = tk.Toplevel(self)
         popup.title("Λεπτομέρειες Ραντεβού")
         popup.geometry("600x400")
         popup.resizable(False, False)
         popup.grab_set()
-        popup.focus_set() 
+        popup.focus_set()
         dt, t = appointment.datetime.split()
         date_obj = datetime.strptime(dt, "%Y-%m-%d")
         day = date_obj.strftime("%A")
         date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
         customer = Customer.get_customer_by_id(appointment.customer_id)
+        if customer is None:
+            # Το grab_set() έχει ΗΔΗ γίνει παραπάνω. Αν φύγουμε από εδώ χωρίς να γκρεμίσουμε
+            # το popup, μένει στην οθόνη ένα modal παράθυρο χωρίς περιεχόμενο και χωρίς
+            # κουμπιά — και χωρίς WM_DELETE_WINDOW handler, γιατί αυτός μπαίνει στο τέλος
+            # της μεθόδου. Ελευθερώνουμε ρητά το grab και γκρεμίζουμε ΠΡΙΝ το μήνυμα.
+            popup.grab_release()
+            popup.destroy()
+            messagebox.showerror("Σφάλμα",
+                                 "Δεν βρέθηκαν τα στοιχεία του πελάτη για αυτό το ραντεβού.")
+            return
         tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
         tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
         tk.Label(popup, text=f"Διάρκεια: {appointment.duration} λεπτά", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,0))

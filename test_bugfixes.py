@@ -979,6 +979,80 @@ if app is not None:
           f"({shown_messages})")
 
 # ---------------------------------------------------------------------------
+# [11] show_appointment_popup: αποτυχία αναζήτησης πελάτη δεν αφήνει modal φάντασμα
+# ---------------------------------------------------------------------------
+print("\n[11] Το popup λεπτομερειών ραντεβού καταρρέει με ασφάλεια")
+
+if app is not None:
+    dash = app.get_frame("DashboardPage")
+
+    def toplevels_of(page):
+        return [w for w in page.winfo_children()
+                if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+
+    # Το popup διαβάζει μόνο πεδία του Appointment, οπότε δεν χρειάζεται εγγραφή στη βάση.
+    ghost_appt = Appointment(customer_id=999999, datetime=f"{FRIDAY} 10:00",
+                             services="Κούρεμα", duration=40, notes="", id=999999)
+
+    # Καθαρή αφετηρία: κλείνουμε ό,τι popup άφησαν οι προηγούμενες ενότητες.
+    for w in toplevels_of(dash):
+        try:
+            w.grab_release()
+        except tk.TclError:
+            pass
+        w.destroy()
+    app.update()
+
+    _real_lookup = Customer.get_customer_by_id
+    Customer.get_customer_by_id = staticmethod(lambda customer_id: None)
+    shown_messages.clear()
+    before_tops = len(toplevels_of(dash))
+    try:
+        dash.show_appointment_popup(ghost_appt, "Φάντασμα Πελάτης")
+        raised = None
+    except Exception as e:
+        raised = e
+    app.update()
+    Customer.get_customer_by_id = _real_lookup
+
+    check("[11] το popup δεν πετάει εξαίρεση όταν λείπει ο πελάτης",
+          raised is None, f"({type(raised).__name__}: {raised})")
+    # (α) κανένα ορφανό Toplevel
+    check("[11] δεν έμεινε ορφανό Toplevel στην οθόνη",
+          len(toplevels_of(dash)) == before_tops,
+          f"(πριν={before_tops}, μετά={len(toplevels_of(dash))})")
+    # (β) κανένα grab — ΤΟ ΚΡΙΣΙΜΟ: ένα modal φάντασμα κλειδώνει την εφαρμογή
+    check("[11] δεν κρατιέται grab από κανένα παράθυρο",
+          app.grab_current() is None, f"(grab_current={app.grab_current()!r})")
+    # (γ) ελληνικός διάλογος σφάλματος
+    err_titles = [t for t, _m in shown_messages]
+    err_msgs = [m for _t, m in shown_messages]
+    check("[11] εμφανίστηκε διάλογος σφάλματος με ελληνικό τίτλο",
+          "Σφάλμα" in err_titles, f"({shown_messages})")
+    check("[11] το μήνυμα είναι ελληνικό και μιλά για τα στοιχεία του πελάτη",
+          any("πελάτη" in m for m in err_msgs), f"({err_msgs})")
+
+    # POSITIVE CONTROL: με υπαρκτό πελάτη το popup ανοίγει κανονικά και ΚΡΑΤΑ grab.
+    real_cust = Customer.get_all()[0]
+    real_appt = Appointment(customer_id=real_cust.id, datetime=f"{FRIDAY} 10:00",
+                            services="Κούρεμα", duration=40, notes="", id=999998)
+    shown_messages.clear()
+    dash.show_appointment_popup(real_appt, f"{real_cust.first_name} {real_cust.last_name}")
+    app.update()
+    opened = toplevels_of(dash)
+    check("[11] positive control: με υπαρκτό πελάτη το popup ΑΝΟΙΓΕΙ",
+          len(opened) == before_tops + 1, f"(τώρα={len(opened)})")
+    check("[11] positive control: δεν εμφανίστηκε σφάλμα",
+          not any(t == "Σφάλμα" for t, _m in shown_messages), f"({shown_messages})")
+    for w in opened:
+        try:
+            w.grab_release()
+        except tk.TclError:
+            pass
+        w.destroy()
+    app.update()
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
