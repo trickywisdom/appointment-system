@@ -1,4 +1,5 @@
 
+import re
 import sqlite3
 import unicodedata
 from datetime import datetime, timedelta
@@ -7,6 +8,59 @@ from datetime import datetime, timedelta
 class AppointmentOverlapError(Exception):
     """Σφάλμα όταν ένα ραντεβού επικαλύπτεται χρονικά με υπάρχον ραντεβού"""
     pass
+
+
+class CustomerValidationError(Exception):
+    """Σφάλμα όταν τα στοιχεία επικοινωνίας του πελάτη δεν έχουν έγκυρη μορφή"""
+    pass
+
+
+# Ελληνικό κινητό: ΑΚΡΙΒΩΣ 10 ψηφία με πρόθεμα 69. Χωρίς διεθνές πρόθεμα και χωρίς
+# σταθερά — ο αριθμός χρησιμεύει για υπενθυμίσεις, οπότε δεχόμαστε μόνο κινητά.
+_PHONE_RE = re.compile(r"^69\d{8}$")
+# Πρακτικός έλεγχος email (ΟΧΙ πλήρες RFC 5322): local@domain.tld, χωρίς κενά,
+# ακριβώς ένα @, και domain που τελειώνει σε κατάληξη 2+ γραμμάτων.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)*\.[A-Za-z]{2,}$")
+
+
+def normalize_phone(phone):
+    """Αφαιρεί ΟΛΑ τα κενά και τις παύλες: «691 000 0001» και «691-000-0001» δίνουν
+    και τα δύο «6910000001». Αυτή είναι η μορφή που ελέγχεται ΚΑΙ αποθηκεύεται, ώστε
+    η αναζήτηση τηλεφώνου (που συγκρίνει ακατέργαστα) να βρίσκει πάντα τον πελάτη."""
+    return re.sub(r"[\s-]", "", phone or "")
+
+
+def normalize_email(email):
+    """Μόνο περικοπή άκρων. Τα εσωτερικά κενά ΔΕΝ αφαιρούνται: ένα email με κενό μέσα
+    είναι λάθος του χρήστη και πρέπει να απορριφθεί, όχι να «διορθωθεί» σιωπηλά."""
+    return (email or "").strip()
+
+
+def validate_phone(phone, typed=None):
+    """Μήνυμα σφάλματος αν το τηλέφωνο δεν έχει έγκυρη μορφή, αλλιώς None.
+    Ο έλεγχος γίνεται στην κανονικοποιημένη τιμή, αλλά το μήνυμα δείχνει το `typed`,
+    δηλαδή ό,τι πληκτρολόγησε ο χρήστης."""
+    value = normalize_phone(phone)
+    shown = (typed if typed is not None else phone) or ""
+    if not value:
+        return "Το τηλέφωνο είναι υποχρεωτικό."
+    if not _PHONE_RE.match(value):
+        return (f"Μη έγκυρο τηλέφωνο: «{shown}». Το τηλέφωνο πρέπει να έχει 10 ψηφία "
+                f"και να ξεκινά με 69.")
+    return None
+
+
+def validate_email(email, typed=None):
+    """Μήνυμα σφάλματος αν το email δεν έχει έγκυρη μορφή, αλλιώς None.
+    Ίδια λογική με το validate_phone για το `typed`."""
+    value = normalize_email(email)
+    shown = (typed if typed is not None else email) or ""
+    if not value:
+        return "Το email είναι υποχρεωτικό."
+    if not _EMAIL_RE.match(value):
+        return (f"Μη έγκυρη διεύθυνση email: «{shown}». Χρειάζεται μορφή "
+                f"όνομα@παροχέας.κατάληξη.")
+    return None
 
 
 def _normalize(s):
@@ -24,8 +78,33 @@ class Customer:
         self.email = email
         self.id = id
 
+    def normalize(self):
+        """Κανονικοποιεί ΕΠΙ ΤΟΠΟΥ τηλέφωνο/email και επιστρέφει τις τιμές όπως δόθηκαν.
+        ΔΕΝ καλείται από την __init__: η Customer φτιάχνεται και από διαβάσματα της βάσης,
+        και δεν θέλουμε να ξαναγράφονται σιωπηλά τιμές που κανείς δεν ζήτησε να αλλάξουν."""
+        typed = (self.phone, self.email)
+        self.phone = normalize_phone(self.phone)
+        self.email = normalize_email(self.email)
+        return typed
+
+    def validate(self, typed_phone=None, typed_email=None):
+        """Ελέγχει τη μορφή τηλεφώνου/email. Αναφέρει ΟΛΑ τα προβλήματα μαζί, ώστε ο
+        χρήστης να μη διορθώνει ένα-ένα πεδίο σε διαδοχικά μηνύματα. Τα typed_* είναι
+        ό,τι πληκτρολογήθηκε πριν την κανονικοποίηση και μπαίνουν στα μηνύματα."""
+        problems = [msg for msg in (validate_phone(self.phone, typed_phone),
+                                    validate_email(self.email, typed_email)) if msg]
+        if problems:
+            raise CustomerValidationError("\n".join(problems))
+
     def save_to_db(self, id=None):
-    # Αποθηκεύει ή ενημερώνει τον πελάτη στη βάση δεδομένων βάσει του id    
+    # Αποθηκεύει ή ενημερώνει τον πελάτη στη βάση δεδομένων βάσει του id
+        # Κανονικοποίηση ΠΡΙΝ τον έλεγχο, ώστε αυτό που αποθηκεύεται να είναι ακριβώς
+        # αυτό που ελέγχθηκε — αλλιώς το «  6910000006  » περνούσε τον έλεγχο και
+        # αποθηκευόταν ΜΕ τα κενά. Έλεγχος μορφής στο μοναδικό σημείο εγγραφής πελάτη,
+        # ίδιο μοτίβο με τον έλεγχο επικάλυψης της Appointment.save_to_db, και ισχύει
+        # και για INSERT και για UPDATE.
+        typed_phone, typed_email = self.normalize()
+        self.validate(typed_phone, typed_email)
         try:
             with sqlite3.connect('salon_appointments.db') as conn:
                 c = conn.cursor()

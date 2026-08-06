@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk, PhotoImage
 import database
 import models
-from models import Customer, Appointment, AppointmentOverlapError
+from models import Customer, Appointment, AppointmentOverlapError, CustomerValidationError
 from tkcalendar import DateEntry
 from tkcalendar import Calendar
 from datetime import datetime, timedelta
@@ -1748,6 +1748,11 @@ class NewClientPage(tk.Frame):
                         return
                 # Αλλιώς (η σελίδα ανοίχτηκε κανονικά) πηγαίνουμε στην ClientsPage
                 self.controller.show_frame("ClientsPage")
+            except CustomerValidationError as e:
+                # Ειδικό μήνυμα ΠΡΙΝ το generic: το κείμενο έρχεται έτοιμο στα ελληνικά
+                # από τον validator και λέει τι ακριβώς πρέπει να διορθωθεί.
+                messagebox.showerror("Σφάλμα", str(e))
+                return
             except Exception as e:
                 messagebox.showerror("Παρουσιάστηκε σφάλμα", f"Αποτυχία στην αποθήκευση του πελάτη: {e}")
 

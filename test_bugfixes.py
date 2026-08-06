@@ -23,7 +23,7 @@ workdir = tempfile.mkdtemp(prefix="appt_test_")
 os.chdir(workdir)
 
 import database
-from models import Customer, Appointment, AppointmentOverlapError
+from models import Customer, Appointment, AppointmentOverlapError, CustomerValidationError
 
 passed = 0
 failed = 0
@@ -654,6 +654,174 @@ if app is not None:
           na.current_customer_id is None, f"(got={na.current_customer_id})")
 
     app.withdraw()
+
+# ---------------------------------------------------------------------------
+# [10] Έλεγχος μορφής τηλεφώνου/email στο ΜΟΝΑΔΙΚΟ σημείο αποθήκευσης πελάτη
+# (models.Customer.save_to_db) — ίδιο μοτίβο με τον έλεγχο επικάλυψης της [1].
+# ---------------------------------------------------------------------------
+print("\n[10] Έλεγχος μορφής τηλεφώνου/email (models.Customer.save_to_db)")
+
+# Η ενότητα έχει δικά της fixtures και δικό της αριθμοδοτικό χώρο (69100000xx /
+# valid-xx@paradeigma.gr) ώστε να μη συγκρούεται με τα UNIQUE των προηγούμενων.
+def customer_exists(phone):
+    return any(c.phone == phone for c in Customer.get_all())
+
+def try_save_customer(phone, email, expect_ok, label, id=None):
+    """Επιχειρεί αποθήκευση· ελέγχει ΚΑΙ την εξαίρεση ΚΑΙ το τι έγραψε στη βάση."""
+    cust = Customer("Έλεγχος", "Μορφής", phone, email, id)
+    try:
+        cust.save_to_db(id)
+    except CustomerValidationError as e:
+        check(label, not expect_ok, f"(απορρίφθηκε ενώ έπρεπε να γίνει δεκτό: {e})")
+        # Το choke point πρέπει να μπλοκάρει ΠΡΙΝ γραφτεί οτιδήποτε στη βάση.
+        check(f"{label} -> τίποτα δεν γράφτηκε στη βάση",
+              not customer_exists(phone), "(βρέθηκε γραμμή παρά την απόρριψη!)")
+        return None, str(e)
+    check(label, expect_ok, "(αποθηκεύτηκε ενώ έπρεπε να απορριφθεί!)")
+    return cust, None
+
+# --- (α) POSITIVE CONTROLS: έγκυρες μορφές περνούν ---
+ok_cust, _ = try_save_customer("6910000001", "valid-01@paradeigma.gr", True,
+                               "κινητό 10ψήφιο + κανονικό email γίνεται δεκτό")
+check("ο έγκυρος πελάτης πήρε id", ok_cust is not None and ok_cust.id is not None)
+try_save_customer("6910000005", "valid.05+tag@sub.paradeigma.co.uk", True,
+                  "email με τελείες/+ και πολλαπλό domain γίνεται δεκτό")
+try_save_customer("  6910000006  ", "  valid-06@paradeigma.gr  ", True,
+                  "κενά γύρω από τις τιμές δεν ρίχνουν τον έλεγχο")
+# Κανονικοποιήσιμα: ο διαχωρισμός ψηφίων είναι συνηθισμένος τρόπος πληκτρολόγησης και
+# ΔΕΝ είναι λάθος του χρήστη — αφαιρείται πριν τον έλεγχο.
+try_save_customer("691 000 0007", "valid-07@paradeigma.gr", True,
+                  "κενά ΑΝΑΜΕΣΑ στα ψηφία κανονικοποιούνται και γίνονται δεκτά")
+try_save_customer("691-000-0008", "valid-08@paradeigma.gr", True,
+                  "παύλες ανάμεσα στα ψηφία κανονικοποιούνται και γίνονται δεκτές")
+
+# --- (β) NEGATIVE CONTROLS: άκυρα τηλέφωνα απορρίπτονται ---
+# Ο κανόνας είναι ΑΥΣΤΗΡΑ 69XXXXXXXX: μόνο ελληνικά κινητά, χωρίς διεθνές πρόθεμα.
+# Τα τρία πρώτα ήταν ΔΕΚΤΑ στο 2c8882f και απορρίπτονται σκόπιμα πλέον.
+BAD_PHONES = [
+    ("2101234567",      "σταθερό — δεν ξεκινά με 69"),
+    ("+306910000003",   "διεθνές πρόθεμα +30 δεν γίνεται δεκτό"),
+    ("00306910000004",  "διεθνές πρόθεμα 0030 δεν γίνεται δεκτό"),
+    ("69100000",        "πολύ λίγα ψηφία"),
+    ("69100000012",     "πολλά ψηφία"),
+    ("5910000001",      "δεν ξεκινά με 69"),
+    ("6810000001",      "ξεκινά με 6 αλλά όχι 69"),
+    ("69100000ab",      "γράμματα"),
+    ("+16910000001",    "λάθος διεθνές πρόθεμα"),
+    ("",                "κενό τηλέφωνο"),
+]
+for i, (bad_phone, why) in enumerate(BAD_PHONES):
+    _c, msg = try_save_customer(bad_phone, f"badphone-{i}@paradeigma.gr", False,
+                                f"τηλέφωνο {bad_phone!r} ({why}) απορρίπτεται")
+    check(f"το μήνυμα για {bad_phone!r} είναι στα ελληνικά και αφορά το τηλέφωνο",
+          msg is not None and "τηλέφων" in msg.lower(), f"(μήνυμα={msg!r})")
+
+# --- (γ) NEGATIVE CONTROLS: άκυρα email απορρίπτονται ---
+BAD_EMAILS = [
+    ("xoris-papaki.gr",         "χωρίς @"),
+    ("diplo@@paradeigma.gr",    "διπλό @"),
+    ("xoris-domain@",           "χωρίς domain"),
+    ("@xoris-onoma.gr",         "χωρίς local part"),
+    ("keno mesa@paradeigma.gr", "κενό μέσα"),
+    ("xoris@teleia",            "domain χωρίς τελεία"),
+    ("diplh@paradeigma..gr",    "διπλή τελεία"),
+    ("",                        "κενό email"),
+]
+for i, (bad_email, why) in enumerate(BAD_EMAILS):
+    _c, msg = try_save_customer(f"692000{i:04d}", bad_email, False,
+                                f"email {bad_email!r} ({why}) απορρίπτεται")
+    check(f"το μήνυμα για {bad_email!r} είναι στα ελληνικά και αφορά το email",
+          msg is not None and "email" in msg.lower(), f"(μήνυμα={msg!r})")
+
+# --- (δ) Και τα δύο λάθος -> αναφέρονται ΚΑΙ ΤΑ ΔΥΟ σε ένα μήνυμα ---
+_c, both_msg = try_save_customer("άκυρο", "άκυρο", False,
+                                 "τηλέφωνο ΚΑΙ email άκυρα απορρίπτονται")
+check("το μήνυμα αναφέρει και τα δύο προβλήματα μαζί",
+      both_msg is not None and "τηλέφων" in both_msg.lower() and "email" in both_msg.lower(),
+      f"(μήνυμα={both_msg!r})")
+
+# --- (ε) ROUND-TRIP: αυτό που ΑΠΟΘΗΚΕΥΤΗΚΕ είναι το κανονικοποιημένο, όχι ό,τι δόθηκε ---
+# Ένας έλεγχος που λέει μόνο «η αποθήκευση πέτυχε» δεν αποδεικνύει ΤΙΠΟΤΑ για το τι
+# γράφτηκε. Διαβάζουμε με σκέτο sqlite3, παρακάμπτοντας τα models, ώστε να μη μας
+# κρύψει τίποτα ένα μελλοντικό getter.
+rt_cust, rt_err = try_save_customer("  691-000-0002  ", "  roundtrip@paradeigma.gr  ", True,
+                                    "τηλέφωνο με κενά ΚΑΙ παύλες γίνεται δεκτό")
+check("ο πελάτης του round-trip πήρε id",
+      rt_cust is not None and rt_cust.id is not None, f"(σφάλμα={rt_err!r})")
+
+if rt_cust is not None and rt_cust.id is not None:
+    with sqlite3.connect('salon_appointments.db') as conn:
+        stored = conn.cursor().execute(
+            "SELECT phone, email FROM customers WHERE id = ?", (rt_cust.id,)
+        ).fetchone()
+
+    check("ΣΤΗ ΒΑΣΗ το τηλέφωνο αποθηκεύτηκε κανονικοποιημένο ως '6910000002'",
+          stored is not None and stored[0] == "6910000002",
+          f"(στη βάση={stored[0] if stored else None!r})")
+    check("ΣΤΗ ΒΑΣΗ το email αποθηκεύτηκε χωρίς κενά άκρων",
+          stored is not None and stored[1] == "roundtrip@paradeigma.gr",
+          f"(στη βάση={stored[1] if stored else None!r})")
+    # Το instance πρέπει να συμφωνεί με τη βάση: η normalize μεταλλάσσει το self.
+    check("το instance κρατά την ίδια κανονικοποιημένη τιμή με τη βάση",
+          rt_cust.phone == "6910000002", f"(instance={rt_cust.phone!r})")
+    # Και το πρακτικό αποτέλεσμα: ο πελάτης βρίσκεται πλέον με σκέτα ψηφία.
+    # (Customer.matches συγκρίνει το τηλέφωνο ΑΚΑΤΕΡΓΑΣΤΟ — γι' αυτό έχει σημασία.)
+    check("ο πελάτης βρίσκεται με αναζήτηση σκέτων ψηφίων '6910000002'",
+          any(c.id == rt_cust.id for c in Customer.search("6910000002")))
+
+# --- (ζ) Το UPDATE path περνά από τον ίδιο έλεγχο, όχι μόνο το INSERT ---
+if ok_cust is not None and ok_cust.id is not None:
+    stale = Customer("Έλεγχος", "Μορφής", "6910000001", "valid-01@paradeigma.gr", ok_cust.id)
+    stale.phone = "αυθαίρετο"
+    try:
+        stale.save_to_db(ok_cust.id)
+        check("το update με άκυρο τηλέφωνο απορρίπτεται", False,
+              "(το update πέρασε χωρίς έλεγχο!)")
+    except CustomerValidationError:
+        check("το update με άκυρο τηλέφωνο απορρίπτεται", True)
+    reread = Customer.get_customer_by_id(ok_cust.id)
+    check("το update που απορρίφθηκε ΔΕΝ άλλαξε τη γραμμή στη βάση",
+          reread is not None and reread.phone == "6910000001",
+          f"(στη βάση={reread.phone if reread else None!r})")
+
+# --- (η) Επίπεδο GUI: το NewClientPage.save_customer δείχνει το ελληνικό μήνυμα ---
+if app is not None:
+    form = app.get_frame("NewClientPage")
+    form.id = None
+    form.reset_fields()
+    form.entry_name.insert(0, "Γκουί")
+    form.entry_surname.insert(0, "Ελεγκτής")
+    form.entry_phone.insert(0, "123")            # άκυρο
+    form.entry_email.insert(0, "oxi-email")      # άκυρο
+
+    shown_messages.clear()
+    form.save_customer()
+    titles_10 = [t for t, _m in shown_messages]
+    msgs_10 = [m for _t, m in shown_messages]
+
+    check("GUI: εμφανίστηκε σφάλμα, όχι επιτυχία",
+          "Σφάλμα" in titles_10 and "Επιτυχία" not in titles_10, f"({shown_messages})")
+    check("GUI: το μήνυμα είναι το ελληνικό μήνυμα του validator",
+          any("τηλέφων" in m.lower() and "email" in m.lower() for m in msgs_10),
+          f"({msgs_10})")
+    check("GUI: ο άκυρος πελάτης ΔΕΝ γράφτηκε στη βάση",
+          not customer_exists("123"))
+    # Το generic except δεν πρέπει να προλάβει το ειδικό: κανένα "Αποτυχία στην αποθήκευση"
+    check("GUI: δεν εμφανίστηκε το γενικό μήνυμα αποτυχίας",
+          not any("Αποτυχία στην αποθήκευση" in m for m in msgs_10), f"({msgs_10})")
+
+    # POSITIVE CONTROL στο ίδιο μονοπάτι: με έγκυρα στοιχεία η φόρμα αποθηκεύει κανονικά.
+    form.reset_fields()
+    form.id = None
+    form.entry_name.insert(0, "Γκουί")
+    form.entry_surname.insert(0, "Εγκυρος")
+    form.entry_phone.insert(0, "6930000001")
+    form.entry_email.insert(0, "gui-ok@paradeigma.gr")
+    shown_messages.clear()
+    form.save_customer()
+    check("GUI: έγκυρα στοιχεία αποθηκεύονται κανονικά",
+          "Επιτυχία" in [t for t, _m in shown_messages] and customer_exists("6930000001"),
+          f"({shown_messages})")
 
 # ---------------------------------------------------------------------------
 if app is not None:
