@@ -54,6 +54,111 @@ set_greek_locale()
 # Αρχικοποίηση της βάσης δεδομένων
 database.setup_database()
 
+
+# ---------------------------------------------------------------------------
+# Κοινό popup λεπτομερειών ραντεβού — σε επίπεδο module, ώστε να μπορεί να το
+# ανοίξει ΟΠΟΙΑΔΗΠΟΤΕ σελίδα, όχι μόνο η DashboardPage.
+# ---------------------------------------------------------------------------
+def delete_appointment_from_popup(popup, appointment, on_delete):
+    """Επιβεβαίωση, διαγραφή από τη βάση, κλείσιμο του popup, και μετά το re-render.
+
+    Το on_delete είναι ΜΟΝΟ το ξαναζωγράφισμα της σελίδας: η επιβεβαίωση, η διαγραφή
+    και το γκρέμισμα του popup μένουν εδώ, ώστε δύο σελίδες να μη γράψουν δύο
+    διαφορετικές διατυπώσεις επιβεβαίωσης ή δύο διαφορετικά teardown."""
+    if not messagebox.askyesno("Επιβεβαίωση", "Θέλεις σίγουρα να διαγράψεις αυτό το ραντεβού;"):
+        return
+
+    try:
+        success = Appointment.delete_from_db(appointment.id)
+        if not success:
+            messagebox.showerror("Σφάλμα", "Αποτυχία διαγραφής")
+            return
+        # Ο modal φεύγει ΠΡΙΝ το re-render. Πριν, το destroy ήταν ΜΕΤΑ την ανανέωση
+        # του ημερολογίου, μέσα στο ίδιο try: αν η ανανέωση έσκαγε, το modal επιβίωνε
+        # στο outer except — η ίδια ορφανή κατάσταση που διόρθωσε το c487560.
+        popup.grab_release()
+        popup.destroy()
+        if on_delete is not None:
+            on_delete()
+    except Exception as e:
+        messagebox.showerror("Σφάλμα", f"Σφάλμα κατά τη διαγραφή: {str(e)}")
+
+
+def open_appointment_popup(parent, appointment, customer_name, on_delete, on_close=None):
+    """Ανοίγει το modal «Λεπτομέρειες Ραντεβού» και το ΕΠΙΣΤΡΕΦΕΙ (None στις αποτυχίες).
+
+    parent      : η σελίδα-ιδιοκτήτης. Χρησιμοποιείται ως γονιός του Toplevel και για
+                  το parent.controller (get_frame, favicon) — υπάρχει σε κάθε σελίδα.
+    on_delete   : καλείται ΧΩΡΙΣ ορίσματα μετά από επιβεβαιωμένη, επιτυχή διαγραφή,
+                  μόνο για να ξαναζωγραφίσει η σελίδα ό,τι δείχνει.
+    on_close    : handler του WM_DELETE_WINDOW, καλείται με το popup. Αν λείπει,
+                  απλώς γκρεμίζεται το popup.
+
+    Το self.current_popup ΔΕΝ γράφεται εδώ: είναι κατάσταση της σελίδας, και ο μόνος
+    αναγνώστης του ανήκει στον κύκλο ζωής ΑΛΛΟΥ popup. Ο καλών το αναθέτει από την
+    επιστρεφόμενη τιμή."""
+    popup = tk.Toplevel(parent)
+    popup.title("Λεπτομέρειες Ραντεβού")
+    popup.geometry("600x400")
+    popup.resizable(False, False)
+    popup.grab_set()
+    popup.focus_set()
+    dt, t = appointment.datetime.split()
+    date_obj = datetime.strptime(dt, "%Y-%m-%d")
+    day = GREEK_DAYS[date_obj.weekday()]
+    date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
+
+    def abort_popup(message):
+        # Το grab_set() έχει ΗΔΗ γίνει παραπάνω. Αν φύγουμε από εδώ χωρίς να γκρεμίσουμε
+        # το popup, μένει στην οθόνη ένα modal παράθυρο χωρίς περιεχόμενο και χωρίς
+        # κουμπιά — και χωρίς WM_DELETE_WINDOW handler, γιατί αυτός μπαίνει στο τέλος
+        # της συνάρτησης. Ελευθερώνουμε ρητά το grab και γκρεμίζουμε ΠΡΙΝ το μήνυμα.
+        popup.grab_release()
+        popup.destroy()
+        messagebox.showerror("Σφάλμα", message)
+
+    try:
+        customer = Customer.get_customer_by_id(appointment.customer_id)
+    except sqlite3.Error:
+        # Βλάβη βάσης — ΔΙΑΦΟΡΕΤΙΚΟ μήνυμα από το «δεν βρέθηκε». Δεν δείχνουμε το
+        # κείμενο του sqlite: είναι αγγλικό (βλ. 78771bc).
+        abort_popup("Πρόβλημα κατά την ανάγνωση από τη βάση δεδομένων. Δοκιμάστε ξανά.")
+        return None
+    if customer is None:
+        abort_popup("Δεν βρέθηκαν τα στοιχεία του πελάτη για αυτό το ραντεβού.")
+        return None
+    tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
+    tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
+    tk.Label(popup, text=f"Διάρκεια: {appointment.duration} λεπτά", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,0))
+    tk.Label(popup, text=f"Υπηρεσία: {appointment.services}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+    tk.Label(popup, text=f"{customer_name}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(5,0))
+    tk.Label(popup, text=f"Τηλέφωνο: {customer.phone}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=0)
+    tk.Label(popup, text=f"Email: {customer.email}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
+    tk.Label(popup, text=f"Σημείωση: {appointment.notes or '-'}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(10,40))
+
+    btn_frame = ttk.Frame(popup)
+    btn_frame.pack(pady=10)
+
+    ttk.Button(btn_frame, text="Επεξεργασία", style='Accent.TButton', command=lambda a=appointment: parent.controller.get_frame("NewAppointPage").edit_appoint(a.customer_id, customer_name, a.datetime, a.services, a.notes, a.id, popup)).pack(side="right", padx=5)
+    ttk.Button(btn_frame, text="Διαγραφή", command=lambda: delete_appointment_from_popup(popup, appointment, on_delete)).pack(side="left", padx=5)
+
+    # Κεντράρισμα popup
+    popup.update_idletasks()
+    width = popup.winfo_width()
+    height = popup.winfo_height()
+    x = (popup.winfo_screenwidth() // 2) - (width // 2)
+    y = (popup.winfo_screenheight() // 2) - (height // 2)
+    popup.geometry(f"{width}x{height}+{x}+{y}")
+
+    if parent.controller.favicon: # αν λείπει η εικόνα, το popup ανοίγει με το default εικονίδιο
+        popup.iconphoto(False, parent.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
+
+    # Bind το κλείσιμο του popup
+    popup.protocol("WM_DELETE_WINDOW",
+                   (lambda: on_close(popup)) if on_close is not None else popup.destroy)
+    return popup
+
+
 class MainApp(tk.Tk):
     """
     Κύρια κλάση της εφαρμογής που διαχειρίζεται το κεντρικό παράθυρο
@@ -785,65 +890,16 @@ class DashboardPage(tk.Frame):
         self.after(300, lambda: force_focus(self, self.current_popup))
   
     def show_appointment_popup(self, appointment, customer_name):
-        """Εμφάνιση popup με λεπτομέρειες ραντεβού"""
-        popup = tk.Toplevel(self)
-        popup.title("Λεπτομέρειες Ραντεβού")
-        popup.geometry("600x400")
-        popup.resizable(False, False)
-        popup.grab_set()
-        popup.focus_set()
-        dt, t = appointment.datetime.split()
-        date_obj = datetime.strptime(dt, "%Y-%m-%d")
-        day = GREEK_DAYS[date_obj.weekday()]
-        date_with_day_infront = f"{day} {date_obj.strftime('%d-%m-%Y')}"
-        def abort_popup(message):
-            # Το grab_set() έχει ΗΔΗ γίνει παραπάνω. Αν φύγουμε από εδώ χωρίς να γκρεμίσουμε
-            # το popup, μένει στην οθόνη ένα modal παράθυρο χωρίς περιεχόμενο και χωρίς
-            # κουμπιά — και χωρίς WM_DELETE_WINDOW handler, γιατί αυτός μπαίνει στο τέλος
-            # της μεθόδου. Ελευθερώνουμε ρητά το grab και γκρεμίζουμε ΠΡΙΝ το μήνυμα.
-            popup.grab_release()
-            popup.destroy()
-            messagebox.showerror("Σφάλμα", message)
+        """Λεπτό περιτύλιγμα γύρω από την κοινή open_appointment_popup.
 
-        try:
-            customer = Customer.get_customer_by_id(appointment.customer_id)
-        except sqlite3.Error:
-            # Βλάβη βάσης — ΔΙΑΦΟΡΕΤΙΚΟ μήνυμα από το «δεν βρέθηκε». Δεν δείχνουμε το
-            # κείμενο του sqlite: είναι αγγλικό (βλ. 78771bc).
-            abort_popup("Πρόβλημα κατά την ανάγνωση από τη βάση δεδομένων. Δοκιμάστε ξανά.")
-            return
-        if customer is None:
-            abort_popup("Δεν βρέθηκαν τα στοιχεία του πελάτη για αυτό το ραντεβού.")
-            return
-        tk.Label(popup, text=f"{date_with_day_infront}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(20,0))
-        tk.Label(popup, text=f"Ώρα: {t}", font=('Segoe UI Semibold', 11)).pack(padx=10)
-        tk.Label(popup, text=f"Διάρκεια: {appointment.duration} λεπτά", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,0))
-        tk.Label(popup, text=f"Υπηρεσία: {appointment.services}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
-        tk.Label(popup, text=f"{customer_name}", font=('Segoe UI Semibold', 14)).pack(padx=10, pady=(5,0))
-        tk.Label(popup, text=f"Τηλέφωνο: {customer.phone}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=0)
-        tk.Label(popup, text=f"Email: {customer.email}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(0,10))
-        tk.Label(popup, text=f"Σημείωση: {appointment.notes or '-'}", font=('Segoe UI Semibold', 11)).pack(padx=10, pady=(10,40))
-
-        btn_frame = ttk.Frame(popup)
-        btn_frame.pack(pady=10)
-
-        ttk.Button(btn_frame, text="Επεξεργασία", style='Accent.TButton', command=lambda a=appointment: self.controller.get_frame("NewAppointPage").edit_appoint(a.customer_id, customer_name, a.datetime, a.services, a.notes, a.id, popup)).pack(side="right", padx=5)
-        ttk.Button(btn_frame, text="Διαγραφή", command=lambda: self.calendar_view.delete_appointment(popup, appointment.id)).pack(side="left", padx=5)
-
-        # Κεντράρισμα popup
-        popup.update_idletasks()
-        width = popup.winfo_width()
-        height = popup.winfo_height()
-        x = (popup.winfo_screenwidth() // 2) - (width // 2)
-        y = (popup.winfo_screenheight() // 2) - (height // 2)
-        popup.geometry(f"{width}x{height}+{x}+{y}")
-
-        if self.controller.favicon: # αν λείπει η εικόνα, το popup ανοίγει με το default εικονίδιο
-            popup.iconphoto(False, self.controller.favicon) # favicon για popup, πρέπει να μπει κάτω από το κεντράρισμα αλλιώς βγάζει πρόβλημα
-        
-        self.current_popup = popup
-        # Bind το κλείσιμο του popup
-        popup.protocol("WM_DELETE_WINDOW", lambda: self.on_popup_close(popup))
+        Κρατά το όνομα και την υπογραφή της παλιάς μεθόδου, ώστε τα τέσσερα
+        <Button-1> bindings της CalendarView.load_appointments να μείνουν ΑΘΙΚΤΑ.
+        Το current_popup είναι κατάσταση της σελίδας, οπότε ανατίθεται εδώ."""
+        popup = open_appointment_popup(self, appointment, customer_name,
+                                       on_delete=self.on_minical_date_selected,
+                                       on_close=self.on_popup_close)
+        if popup:
+            self.current_popup = popup
 
     def on_popup_close(self, popup=None):
          # Βρες όλα τα ανοιχτά Toplevel που ανήκουν σε αυτό το παράθυρο και κλείστα
