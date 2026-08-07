@@ -1826,6 +1826,11 @@ class NewClientPage(tk.Frame):
 
 
 class ShowClientPage(tk.Frame):
+    # Οπτικό δάπεδο: τόσες γραμμές ΖΩΓΡΑΦΙΖΟΝΤΑΙ πάντα, ακόμη κι αν ο πελάτης έχει
+    # λιγότερα ραντεβού. Οι γραμμές-γέμισμα είναι ΜΟΝΟ widgets — δεν μπαίνουν στα
+    # δεδομένα της σελίδας (βλ. show_appointments).
+    ROW_FLOOR = 10
+
     def __init__(self, parent, controller):
         super().__init__(parent)
         self.controller = controller
@@ -1887,7 +1892,16 @@ class ShowClientPage(tk.Frame):
         self.scrollable_frame.bind("<Enter>", lambda e: self.canvas.bind_all("<MouseWheel>", _on_mousewheel))
         self.scrollable_frame.bind("<Leave>", lambda e: self.canvas.unbind_all("<MouseWheel>"))
 
-        self.appoints_list = [] 
+        # Τα ΑΝΤΙΚΕΙΜΕΝΑ Appointment του πελάτη που δείχνουμε — όχι strings οθόνης.
+        self.appoints_list = []
+        # row_index -> Appointment, ΜΟΝΟ για πραγματικές γραμμές. Αυτό δίνει ξανά
+        # ταυτότητα στη γραμμή: πριν, μετά το στένεμα σε (datetime, services), καμία
+        # γραμμή δεν μπορούσε να πει ΠΟΙΟ ραντεβού είναι.
+        self.row_appointments = {}
+        # Αρχικοποιούνται ΕΔΩ και όχι μόνο στη show_appointments: σε φρέσκια σελίδα η
+        # ανάγνωσή τους έσκαγε με AttributeError (ίδιο μοτίβο με το 6154f9a).
+        self.items = []
+        self.target_index = None
 
         # Stretch οι στήλες του scrollable frame
         for col in range(3):
@@ -1916,7 +1930,10 @@ class ShowClientPage(tk.Frame):
             return
 
         visible_rows = 10  # Πόσες σειρές χωράει το frame ορατές
-        total_rows = max(len(self.appoints_list), 1)
+        # ΟΣΕΣ ΖΩΓΡΑΦΙΖΟΝΤΑΙ, όχι όσες είναι αποθηκευμένες. Πριν, η appoints_list ήταν η
+        # ίδια γεμισμένη στις 10, οπότε το len() έδινε τυχαία το σωστό. Τώρα που τα
+        # δεδομένα δεν γεμίζουν, το δάπεδο μπαίνει ρητά ώστε το κλάσμα να μην αλλάξει.
+        total_rows = max(len(self.appoints_list), self.ROW_FLOOR, 1)
         max_index = total_rows - 1
 
         # Υπολόγισε τον μεγαλύτερο δυνατό index που μπορεί να είναι στην κορυφή
@@ -1930,32 +1947,54 @@ class ShowClientPage(tk.Frame):
         fraction = top_index / total_rows
         self.canvas.yview_moveto(fraction)
 
+    def draw_row(self, row_index, values):
+        """Ζωγραφίζει μία γραμμή τριών στηλών. Χρησιμοποιείται και για τις πραγματικές
+        γραμμές και για τις γραμμές-γέμισμα, ώστε η εμφάνιση να μένει ίδια."""
+        bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
+        for col_index, value in enumerate(values):
+            tk.Label(self.scrollable_frame, text=value, font=("Segoe UI", 10),
+                     bg=bg, anchor="w", padx=23, pady=6).grid(
+                row=row_index, column=col_index, sticky="ew"
+            )
+
     def show_appointments(self):
 
-        self.items = []  # καθάρισε την παλιά λίστα (αν υπάρχει)
+        self.items = []              # καθάρισε την παλιά λίστα (αν υπάρχει)
+        self.row_appointments = {}   # row_index -> Appointment, μόνο πραγματικές γραμμές
         today = datetime.today().date()
 
         # Καθαρισμός παλιών widgets
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-        
-        for i in range(10 - len(self.appoints_list)):
-            self.appoints_list.append(["", "", ""])
-       
-        # Εμφάνιση
-        for row_index, appoint in enumerate(self.appoints_list):
-            bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
-            for col_index, value in enumerate(appoint):
-                tk.Label(self.scrollable_frame, text=value, font=("Segoe UI", 10),
-                        bg=bg, anchor="w", padx=23, pady=6).grid(
-                    row=row_index, column=col_index, sticky="ew"
-                )
-            # Αν η ημερομηνία είναι στο appoint[0]
-            try:
-                date_obj = datetime.strptime(appoint[0], "%d-%m-%Y").date()
-                self.items.append((date_obj, row_index))  # κρατάμε το index ή row_id
-            except Exception:
-                continue
+
+        # Πραγματικές γραμμές: η μορφοποίηση γίνεται ΕΔΩ, στο σημείο εμφάνισης. Η
+        # appoints_list κρατά αντικείμενα Appointment και ΔΕΝ μεταλλάσσεται πλέον.
+        try:
+            for row_index, appt in enumerate(self.appoints_list):
+                dt_obj = datetime.strptime(appt.datetime, "%Y-%m-%d %H:%M")
+                self.draw_row(row_index, (dt_obj.strftime("%d-%m-%Y"),
+                                          dt_obj.strftime("%H:%M"),
+                                          appt.services))
+                # Ταυτότητα: η γραμμή ξέρει ΠΟΙΟ ραντεβού είναι.
+                self.row_appointments[row_index] = appt
+                # Η ημερομηνία βγαίνει από το αντικείμενο, ΟΧΙ με re-parse του string οθόνης.
+                self.items.append((dt_obj.date(), row_index))
+        except Exception as e:
+            # Ίδια συμπεριφορά με πριν, όταν το strptime ζούσε μέσα στην
+            # get_appoints_from_id: ελληνικό μήνυμα και άδειος πίνακας, αντί για
+            # εξαίρεση που ξεφεύγει στο callback του Tk και αφήνει μισοζωγραφισμένη σελίδα.
+            messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης ραντεβού: {e}")
+            for widget in self.scrollable_frame.winfo_children():
+                widget.destroy()
+            self.appoints_list = []
+            self.items = []
+            self.row_appointments = {}
+
+        # Γραμμές-γέμισμα: ΜΟΝΟ widgets, ώστε ο πίνακας να κρατά το ύψος του. Δεν
+        # μπαίνουν ούτε στην appoints_list, ούτε στο items, ούτε στο row_appointments —
+        # οπότε δεν χρειάζεται πια να τις "φιλτράρει" μια αποτυχία του strptime.
+        for row_index in range(len(self.appoints_list), self.ROW_FLOOR):
+            self.draw_row(row_index, ("", "", ""))
 
         # Βρες το κατάλληλο index, κάνε το κατάλληλο scroll, highlight τη σωστή γραμμή
         self.target_index = self.find_best_matching_item(today)
@@ -1995,20 +2034,14 @@ class ShowClientPage(tk.Frame):
                 widget.configure(bg="#0560b6", fg="white")  # highlight τη γραμμή
 
     def get_appoints_from_id(self, customer_id):
+        """Τα ΑΝΤΙΚΕΙΜΕΝΑ Appointment του πελάτη, σε σειρά datetime ASC, ΑΣΤΕΝΕΜΕΝΑ.
+
+        Παλιότερα εδώ γινόταν στένεμα σε (ημερομηνία, ώρα, υπηρεσία) ως strings οθόνης,
+        που πετούσε id, duration, notes και customer_id — και μαζί τους κάθε δυνατότητα
+        να πει κανείς ΠΟΙΟ ραντεβού είναι μια γραμμή. Η μορφοποίηση ανήκει στο σημείο
+        εμφάνισης (show_appointments), όχι εδώ."""
         try:
-            appoints_list = [(a.datetime, a.services) for a in Appointment.get_by_customer_id(customer_id)]
-
-            new_appoints_list = []
-
-            for date_str, service in appoints_list:
-                dt_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
-                date_part = dt_obj.strftime("%d-%m-%Y")
-                time_part = dt_obj.strftime("%H:%M")
-                new_appoints_list.append((date_part, time_part, service))
-
-            appoints_list = new_appoints_list
-
-            return appoints_list
+            return Appointment.get_by_customer_id(customer_id)
         except Exception as e:
             # Η μέθοδος φέρνει ΡΑΝΤΕΒΟΥ, όχι πελάτες — το παλιό μήνυμα έλεγε λάθος ουσιαστικό.
             messagebox.showerror("Σφάλμα", f"Αποτυχία φόρτωσης ραντεβού: {e}")
