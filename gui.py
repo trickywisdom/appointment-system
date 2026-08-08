@@ -2004,14 +2004,20 @@ class ShowClientPage(tk.Frame):
         self.canvas.yview_moveto(fraction)
 
     def draw_row(self, row_index, values):
-        """Ζωγραφίζει μία γραμμή τριών στηλών. Χρησιμοποιείται και για τις πραγματικές
-        γραμμές και για τις γραμμές-γέμισμα, ώστε η εμφάνιση να μένει ίδια."""
+        """Ζωγραφίζει μία γραμμή τριών στηλών και ΕΠΙΣΤΡΕΦΕΙ τα τρία labels.
+
+        Χρησιμοποιείται και για τις πραγματικές γραμμές και για τις γραμμές-γέμισμα,
+        ώστε η εμφάνιση να μένει ίδια. Επιστρέφει τα widgets γιατί ο καλών δένει το
+        διπλό κλικ και στις ΤΡΕΙΣ στήλες — αλλιώς το διπλό κλικ στη στήλη «Υπηρεσία»
+        δεν θα έκανε τίποτα ενώ στη στήλη «Ημερομηνία» θα δούλευε."""
         bg = "#e3f2fd" if row_index % 2 == 0 else "#F5F2E9"
+        labels = []
         for col_index, value in enumerate(values):
-            tk.Label(self.scrollable_frame, text=value, font=("Segoe UI", 10),
-                     bg=bg, anchor="w", padx=23, pady=6).grid(
-                row=row_index, column=col_index, sticky="ew"
-            )
+            label = tk.Label(self.scrollable_frame, text=value, font=("Segoe UI", 10),
+                             bg=bg, anchor="w", padx=23, pady=6)
+            label.grid(row=row_index, column=col_index, sticky="ew")
+            labels.append(label)
+        return labels
 
     def show_appointments(self):
 
@@ -2026,15 +2032,27 @@ class ShowClientPage(tk.Frame):
         # Πραγματικές γραμμές: η μορφοποίηση γίνεται ΕΔΩ, στο σημείο εμφάνισης. Η
         # appoints_list κρατά αντικείμενα Appointment και ΔΕΝ μεταλλάσσεται πλέον.
         try:
+            # ΟΧΙ default argument: το now υπολογίζεται σε ΚΑΘΕ render, αλλιώς θα ήταν
+            # παγωμένο στο import (το ίδιο σφάλμα που υπάρχει ήδη στη CalendarView).
+            now = datetime.now()
             for row_index, appt in enumerate(self.appoints_list):
                 dt_obj = datetime.strptime(appt.datetime, "%Y-%m-%d %H:%M")
-                self.draw_row(row_index, (dt_obj.strftime("%d-%m-%Y"),
-                                          dt_obj.strftime("%H:%M"),
-                                          appt.services))
+                row_labels = self.draw_row(row_index, (dt_obj.strftime("%d-%m-%Y"),
+                                                       dt_obj.strftime("%H:%M"),
+                                                       appt.services))
                 # Ταυτότητα: η γραμμή ξέρει ΠΟΙΟ ραντεβού είναι.
                 self.row_appointments[row_index] = appt
                 # Η ημερομηνία βγαίνει από το αντικείμενο, ΟΧΙ με re-parse του string οθόνης.
                 self.items.append((dt_obj.date(), row_index))
+                # ΕΛΕΓΧΟΣ 1 (render time): μόνο τα ΜΗ περασμένα ραντεβού είναι ενεργά.
+                # Σύγκριση ΠΛΗΡΟΥΣ datetime με το now, όχι ημερομηνίας με το today: ένα
+                # ραντεβού νωρίτερα ΣΗΜΕΡΑ είναι παρελθόν. Το hand2 δίνει και την οπτική
+                # ένδειξη ποιες γραμμές είναι πατήσιμες.
+                if dt_obj >= now:
+                    for label in row_labels:
+                        label.configure(cursor="hand2")
+                        label.bind("<Double-Button-1>",
+                                   lambda e, i=row_index: self.open_appointment_details(i))
         except Exception as e:
             # Ίδια συμπεριφορά με πριν, όταν το strptime ζούσε μέσα στην
             # get_appoints_from_id: ελληνικό μήνυμα και άδειος πίνακας, αντί για
@@ -2056,6 +2074,42 @@ class ShowClientPage(tk.Frame):
         self.target_index = self.find_best_matching_item(today)
         self.after(100, self.scroll_to_target)
         self.highlight_target_row()
+
+    def reload_appointments(self):
+        """Ξαναζωγραφίζει ΜΟΝΟ τον πίνακα ραντεβού του πελάτη που ήδη δείχνουμε.
+
+        ΔΕΝ χρησιμοποιείται η customer_info: εκείνη ξαναδιαβάζει τον πελάτη από τη βάση
+        (τίποτα δικό του δεν άλλαξε), μπορεί να βγάλει «Δεν βρέθηκε ο πελάτης» σε μια
+        διαδρομή όπου διαγράφηκε ΡΑΝΤΕΒΟΥ, και στην τελευταία της γραμμή κάνει
+        show_frame — πλοήγηση σε σελίδα όπου ήδη βρισκόμαστε."""
+        if self.current_customer_id is None:
+            return
+        self.appoints_list = self.get_appoints_from_id(self.current_customer_id)
+        self.show_appointments()
+
+    def close_appointment_popup(self, popup):
+        """Handler του WM_DELETE_WINDOW. Η open_appointment_popup το καλεί ως
+        on_close(popup), οπότε δέχεται ΕΝΑ όρισμα. Αυτή η σελίδα δεν έχει dropdown
+        αναζήτησης να καθαρίσει (σε αντίθεση με τη DashboardPage), οπότε απλώς κλείνει."""
+        popup.destroy()
+
+    def open_appointment_details(self, row_index):
+        """Ανοίγει το κοινό popup για τη γραμμή row_index, αν είναι ενεργή."""
+        appt = self.row_appointments.get(row_index)
+        if appt is None:
+            return  # γραμμή-γέμισμα: δεν αντιστοιχεί σε ραντεβού
+        try:
+            appt_dt = datetime.strptime(appt.datetime, "%Y-%m-%d %H:%M")
+        except (ValueError, TypeError):
+            return
+        # ΕΛΕΓΧΟΣ 2 (click time): ο έλεγχος του render μπαγιατεύει σε σελίδα που έμεινε
+        # ανοιχτή — αρκεί να περάσει η ώρα του ραντεβού. Ο render-time έλεγχος δίνει την
+        # ένδειξη, αυτός εδώ δίνει την εγγύηση.
+        if appt_dt < datetime.now():
+            return
+        open_appointment_popup(self, appt, self.current_customer_name,
+                               on_delete=self.reload_appointments,
+                               on_close=self.close_appointment_popup)
 
     def customer_info(self, customer_id):
         try:

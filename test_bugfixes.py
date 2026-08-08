@@ -1581,6 +1581,182 @@ if app is not None:
           grid_row_count(sp14) == 12, f"(got={grid_row_count(sp14)})")
 
 # ---------------------------------------------------------------------------
+# [15] Διπλό κλικ σε γραμμή της ShowClientPage ανοίγει το κοινό popup.
+# Τα ΠΕΡΑΣΜΕΝΑ ραντεβού δεν είναι πατήσιμα.
+# ---------------------------------------------------------------------------
+print("\n[15] Διπλό κλικ στον πίνακα της ShowClientPage")
+
+if app is not None:
+    sp15 = app.get_frame("ShowClientPage")
+
+    # ΤΟ ΚΡΙΣΙΜΟ: τα popups αυτής της σελίδας κρεμιούνται από την ShowClientPage, ΟΧΙ
+    # από τη DashboardPage. Οι σαρώσεις των [11]/[12] κοιτούν dash.winfo_children() και
+    # ΔΕΝ θα τα έβλεπαν ποτέ — θα περνούσαν κενές. Εδώ σαρώνουμε τη ΣΩΣΤΗ σελίδα.
+    def sp_toplevels():
+        return [w for w in sp15.winfo_children()
+                if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+
+    def clear_sp_toplevels():
+        for w in sp_toplevels():
+            try:
+                w.grab_release()
+            except tk.TclError:
+                pass
+            w.destroy()
+        app.update()
+
+    NOW15 = datetime.now()
+    TODAY15 = NOW15.date()
+    cust15 = Customer("Διπλό", "Κλικ", "6980000001", "diploklik@paradeigma.gr")
+    cust15.save_to_db()
+
+    def seed15(moment, service):
+        a = Appointment(cust15.id, moment.strftime("%Y-%m-%d %H:%M"), service, 20, "")
+        a.save_to_db()
+        return a
+
+    # δικές της ημέρες (-100 / +100 / +101), αχρησιμοποίητες από την [14]
+    appt_past_far = seed15(datetime.combine(TODAY15 - timedelta(days=100),
+                                            datetime.min.time()).replace(hour=13, minute=33),
+                           "Βάψιμο")
+    # ΣΗΜΕΡΑ στις 00:01 — ίδια ΗΜΕΡΟΜΗΝΙΑ με το σήμερα, αλλά η ΩΡΑ έχει περάσει.
+    # Αυτό ξεχωρίζει τη σύγκριση datetime-vs-now από τη σύγκριση date-vs-today.
+    same_day_moment = datetime.combine(TODAY15, datetime.min.time()).replace(minute=1)
+    appt_past_today = seed15(same_day_moment, "Χτένισμα")
+    appt_future_a = seed15(datetime.combine(TODAY15 + timedelta(days=100),
+                                            datetime.min.time()).replace(hour=13, minute=33),
+                           "Κούρεμα")
+    appt_future_b = seed15(datetime.combine(TODAY15 + timedelta(days=101),
+                                            datetime.min.time()).replace(hour=13, minute=33),
+                           "Βάψιμο")
+    check("[15] setup — 4 ραντεβού (2 περασμένα, 2 μελλοντικά)",
+          all(a.id is not None for a in (appt_past_far, appt_past_today,
+                                         appt_future_a, appt_future_b)))
+    check("[15] setup — το ραντεβού των 00:01 είναι ΣΗΜΕΡΑ και ΕΧΕΙ ΠΕΡΑΣΕΙ",
+          same_day_moment.date() == TODAY15 and same_day_moment < NOW15,
+          f"(moment={same_day_moment}, now={NOW15})")
+
+    clear_sp_toplevels()
+    sp15.customer_info(cust15.id)
+    app.update()
+
+    # σειρά datetime ASC -> 0: past_far, 1: past_today, 2: future_a, 3: future_b
+    ROWS15 = {0: appt_past_far, 1: appt_past_today, 2: appt_future_a, 3: appt_future_b}
+    check("[15] ο πίνακας δείχνει τα 4 ραντεβού στη σωστή σειρά",
+          [a.id for a in sp15.appoints_list] == [ROWS15[i].id for i in range(4)],
+          f"(got={[a.id for a in sp15.appoints_list]})")
+
+    def row_widgets(idx):
+        return [w for w in sp15.scrollable_frame.winfo_children()
+                if int(w.grid_info()["row"]) == idx]
+
+    # --- (α) Η ΠΥΛΗ στο render: ποιες γραμμές είναι πατήσιμες ---
+    for idx, is_future in ((0, False), (1, False), (2, True), (3, True)):
+        ws = row_widgets(idx)
+        bound = [bool(w.bind("<Double-Button-1>")) for w in ws]
+        cursors = [str(w.cget("cursor")) for w in ws]
+        label = "ΜΕΛΛΟΝΤΙΚΗ" if is_future else "ΠΕΡΑΣΜΕΝΗ"
+        check(f"[15α] γραμμή {idx} ({label}): και οι 3 στήλες "
+              f"{'ΕΧΟΥΝ' if is_future else 'ΔΕΝ έχουν'} διπλό κλικ",
+              len(ws) == 3 and all(b is is_future for b in bound),
+              f"(bound={bound})")
+        check(f"[15α] γραμμή {idx} ({label}): cursor "
+              f"{'hand2' if is_future else 'προεπιλογή'}",
+              all((c == "hand2") is is_future for c in cursors), f"(cursors={cursors})")
+    # γραμμές-γέμισμα: ποτέ πατήσιμες
+    for idx in range(4, 10):
+        ws = row_widgets(idx)
+        check(f"[15α] γραμμή-γέμισμα {idx}: χωρίς διπλό κλικ",
+              len(ws) == 3 and not any(w.bind("<Double-Button-1>") for w in ws),
+              f"(bound={[bool(w.bind('<Double-Button-1>')) for w in ws]})")
+
+    # --- (β) Το popup ανοίγει ΜΟΝΟ σε μελλοντική γραμμή, με τα ΣΩΣΤΑ στοιχεία ---
+    # Το Tk ΑΡΝΕΙΤΑΙ να συνθέσει <Double-Button-1> ("Double, Triple, or Quadruple
+    # modifier not allowed") — ο χαρακτηρισμός του διπλού κλικ μπαίνει μόνο σε
+    # πραγματικά events. Οπότε: η ΥΠΑΡΞΗ του binding ελέγχεται χωριστά στο [15α], και
+    # εδώ καλείται ο handler που δένει το binding — δηλαδή ο έλεγχος της ώρας του κλικ.
+    def double_click(idx):
+        clear_sp_toplevels()
+        sp15.open_appointment_details(idx)
+        app.update()
+        return sp_toplevels()
+
+    for idx in (0, 1):
+        check(f"[15β] διπλό κλικ σε ΠΕΡΑΣΜΕΝΗ γραμμή {idx} ΔΕΝ ανοίγει popup",
+              len(double_click(idx)) == 0, f"(popups={len(sp_toplevels())})")
+    for idx in range(4, 10):
+        check(f"[15β] διπλό κλικ σε γραμμή-γέμισμα {idx} ΔΕΝ ανοίγει popup",
+              len(double_click(idx)) == 0, f"(popups={len(sp_toplevels())})")
+
+    opened15 = double_click(2)
+    check("[15β] διπλό κλικ σε ΜΕΛΛΟΝΤΙΚΗ γραμμή ΑΝΟΙΓΕΙ popup (κάτω από ShowClientPage)",
+          len(opened15) == 1, f"(popups={len(opened15)})")
+    if opened15:
+        texts = [w.cget("text") for w in opened15[0].winfo_children()
+                 if w.winfo_class() == "Label"]
+        want_dt = datetime.strptime(appt_future_a.datetime, "%Y-%m-%d %H:%M")
+        check("[15β] το popup δείχνει την ημερομηνία ΑΥΤΟΥ του ραντεβού",
+              any(want_dt.strftime("%d-%m-%Y") in t for t in texts), f"({texts})")
+        check("[15β] το popup δείχνει την ώρα ΑΥΤΟΥ του ραντεβού",
+              any(t == f"Ώρα: {want_dt.strftime('%H:%M')}" for t in texts), f"({texts})")
+        check("[15β] το popup δείχνει την υπηρεσία ΑΥΤΟΥ του ραντεβού",
+              any(t == f"Υπηρεσία: {appt_future_a.services}" for t in texts), f"({texts})")
+        check("[15β] το popup δείχνει το όνομα του πελάτη της σελίδας",
+              any(t == "Διπλό Κλικ" for t in texts), f"({texts})")
+    clear_sp_toplevels()
+
+    # --- (γ) TEARDOWN, με σάρωση στη ΣΩΣΤΗ σελίδα ---
+    _real15 = Customer.get_customer_by_id
+    Customer.get_customer_by_id = staticmethod(lambda cid: None)
+    shown_messages.clear()
+    try:
+        ghost15 = double_click(3)
+    finally:
+        Customer.get_customer_by_id = _real15
+    check("[15γ] αποτυχία πελάτη: ΚΑΝΕΝΑ ορφανό Toplevel κάτω από την ShowClientPage",
+          len(ghost15) == 0, f"(έμειναν {len(ghost15)})")
+    check("[15γ] αποτυχία πελάτη: δεν κρατιέται grab",
+          app.grab_current() is None, f"(grab={app.grab_current()!r})")
+    check("[15γ] αποτυχία πελάτη: ελληνικός διάλογος σφάλματος",
+          any(t == "Σφάλμα" for t, _m in shown_messages), f"({shown_messages})")
+    clear_sp_toplevels()
+
+    # --- (δ) Διαγραφή από το popup: φεύγει από τη ΒΑΣΗ και από τον πίνακα ---
+    opened15 = double_click(2)
+    check("[15δ] setup — άνοιξε ξανά το popup της μελλοντικής γραμμής",
+          len(opened15) == 1, f"(popups={len(opened15)})")
+    if opened15:
+        del_btn = [c for f in opened15[0].winfo_children() if f.winfo_class() == "TFrame"
+                   for c in f.winfo_children() if str(c.cget("text")) == "Διαγραφή"]
+        check("[15δ] setup — βρέθηκε το κουμπί Διαγραφή", len(del_btn) == 1)
+        if del_btn:
+            _real_ask = gui.messagebox.askyesno
+            gui.messagebox.askyesno = lambda t, m, **k: True
+            try:
+                del_btn[0].invoke()
+                app.update()
+            finally:
+                gui.messagebox.askyesno = _real_ask
+
+            remaining = [a.id for a in Appointment.get_by_customer_id(cust15.id)]
+            check("[15δ] το ΣΩΣΤΟ ραντεβού διαγράφηκε από τη ΒΑΣΗ (ταυτότητα με id)",
+                  appt_future_a.id not in remaining
+                  and sorted(remaining) == sorted([appt_past_far.id, appt_past_today.id,
+                                                   appt_future_b.id]),
+                  f"(remaining={remaining}, deleted={appt_future_a.id})")
+            check("[15δ] ο πίνακας ξαναζωγραφίστηκε χωρίς τη γραμμή",
+                  [a.id for a in sp15.appoints_list] == [appt_past_far.id,
+                                                         appt_past_today.id,
+                                                         appt_future_b.id],
+                  f"(got={[a.id for a in sp15.appoints_list]})")
+            check("[15δ] ο χάρτης γραμμών ενημερώθηκε (3 πραγματικές γραμμές)",
+                  len(sp15.row_appointments) == 3, f"(got={len(sp15.row_appointments)})")
+            check("[15δ] το popup έκλεισε και δεν κρατιέται grab",
+                  len(sp_toplevels()) == 0 and app.grab_current() is None,
+                  f"(popups={len(sp_toplevels())}, grab={app.grab_current()!r})")
+    clear_sp_toplevels()
+
+# ---------------------------------------------------------------------------
 if app is not None:
     app.destroy()
 print(f"\nΑποτέλεσμα: {passed} πέρασαν, {failed} απέτυχαν")
