@@ -1671,13 +1671,18 @@ if app is not None:
               f"(bound={[bool(w.bind('<Double-Button-1>')) for w in ws]})")
 
     # --- (β) Το popup ανοίγει ΜΟΝΟ σε μελλοντική γραμμή, με τα ΣΩΣΤΑ στοιχεία ---
-    # Το Tk ΑΡΝΕΙΤΑΙ να συνθέσει <Double-Button-1> ("Double, Triple, or Quadruple
-    # modifier not allowed") — ο χαρακτηρισμός του διπλού κλικ μπαίνει μόνο σε
-    # πραγματικά events. Οπότε: η ΥΠΑΡΞΗ του binding ελέγχεται χωριστά στο [15α], και
-    # εδώ καλείται ο handler που δένει το binding — δηλαδή ο έλεγχος της ώρας του κλικ.
-    def double_click(idx):
+    # ΠΡΑΓΜΑΤΙΚΟ διπλό κλικ. Το event_generate("<Double-Button-1>") απορρίπτεται από το
+    # Tk ("Double, Triple, or Quadruple modifier not allowed"), ΟΜΩΣ το Tk παράγει μόνο
+    # του το διπλό κλικ από δύο διαδοχικά <Button-1> στο ίδιο σημείο. Έτσι η δοκιμή
+    # περνά από ΤΟ ΙΔΙΟ ΤΟ BINDING, όχι από τη μέθοδο πίσω του: μετονομασία της
+    # open_appointment_details γίνεται πλέον κόκκινη.
+    def double_click(idx, col=0):
         clear_sp_toplevels()
-        sp15.open_appointment_details(idx)
+        targets = [w for w in row_widgets(idx)
+                   if int(w.grid_info()["column"]) == col]
+        for w in targets:
+            w.event_generate("<Button-1>", x=3, y=3)
+            w.event_generate("<Button-1>", x=3, y=3)
         app.update()
         return sp_toplevels()
 
@@ -1688,6 +1693,12 @@ if app is not None:
         check(f"[15β] διπλό κλικ σε γραμμή-γέμισμα {idx} ΔΕΝ ανοίγει popup",
               len(double_click(idx)) == 0, f"(popups={len(sp_toplevels())})")
 
+    # ΚΑΘΕ στήλη χωριστά: αν δενόταν μόνο η πρώτη, το διπλό κλικ στη «Υπηρεσία» θα
+    # ήταν νεκρό ενώ στην «Ημερομηνία» θα δούλευε.
+    for col, col_name in ((0, "Ημερομηνία"), (1, "Ώρα"), (2, "Υπηρεσία")):
+        opened_col = double_click(2, col)
+        check(f"[15β] διπλό κλικ στη στήλη «{col_name}» ΜΕΛΛΟΝΤΙΚΗΣ γραμμής ανοίγει popup",
+              len(opened_col) == 1, f"(popups={len(opened_col)})")
     opened15 = double_click(2)
     check("[15β] διπλό κλικ σε ΜΕΛΛΟΝΤΙΚΗ γραμμή ΑΝΟΙΓΕΙ popup (κάτω από ShowClientPage)",
           len(opened15) == 1, f"(popups={len(opened15)})")
