@@ -479,27 +479,6 @@ class CalendarView(tk.Frame):
         new_minute = total_minutes % 60
         return f"{new_hour:02d}:{new_minute:02d}"
 
-    def delete_appointment(self, popup, appointment_id):
-        """Διαγράφει ένα ραντεβού από τη βάση δεδομένων"""
-        if not messagebox.askyesno("Επιβεβαίωση", "Θέλεις σίγουρα να διαγράψεις αυτό το ραντεβού;"):
-            return
-    
-        try:
-            # Διαγραφή από τη βάση
-            success = Appointment.delete_from_db(appointment_id)
-            if not success:
-                messagebox.showerror("Σφάλμα", "Αποτυχία διαγραφής")
-                return
-
-            # Επαναφόρτωση του ημερολογίου
-            self.controller.get_frame("DashboardPage").on_minical_date_selected()
-            
-            # Κλείσιμο popup
-            popup.destroy()
-
-        except Exception as e:
-            messagebox.showerror("Σφάλμα", f"Σφάλμα κατά τη διαγραφή: {str(e)}")
-
     def rebuild_calendar(self, start_date):
         """Επαναδημιουργεί ολόκληρο το ημερολόγιο για νέα ημερομηνία"""
         # Επαναδημιουργία πλέγματος
@@ -2087,12 +2066,6 @@ class ShowClientPage(tk.Frame):
         self.appoints_list = self.get_appoints_from_id(self.current_customer_id)
         self.show_appointments()
 
-    def close_appointment_popup(self, popup):
-        """Handler του WM_DELETE_WINDOW. Η open_appointment_popup το καλεί ως
-        on_close(popup), οπότε δέχεται ΕΝΑ όρισμα. Αυτή η σελίδα δεν έχει dropdown
-        αναζήτησης να καθαρίσει (σε αντίθεση με τη DashboardPage), οπότε απλώς κλείνει."""
-        popup.destroy()
-
     def open_appointment_details(self, row_index):
         """Ανοίγει το κοινό popup για τη γραμμή row_index, αν είναι ενεργή."""
         appt = self.row_appointments.get(row_index)
@@ -2107,9 +2080,11 @@ class ShowClientPage(tk.Frame):
         # ένδειξη, αυτός εδώ δίνει την εγγύηση.
         if appt_dt < datetime.now():
             return
+        # Χωρίς on_close: η προεπιλογή της open_appointment_popup είναι ακριβώς
+        # popup.destroy, που είναι ό,τι χρειάζεται αυτή η σελίδα — δεν έχει
+        # dropdown αναζήτησης να καθαρίσει, σε αντίθεση με τη DashboardPage.
         open_appointment_popup(self, appt, self.current_customer_name,
-                               on_delete=self.reload_appointments,
-                               on_close=self.close_appointment_popup)
+                               on_delete=self.reload_appointments)
 
     def customer_info(self, customer_id):
         try:
